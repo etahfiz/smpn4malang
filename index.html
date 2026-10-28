@@ -22,6 +22,7 @@
     {
       "imports": {
         "react": "https://esm.sh/react@18.2.0",
+        "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
         "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
         "lucide-react": "https://esm.sh/lucide-react@0.454.0?external=react"
       }
@@ -32,10 +33,11 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-slate-50">
-  <!-- Indikator Loading Awal (Akan otomatis hilang saat aplikasi muncul) -->
+  <!-- Indikator Loading Awal -->
   <div id="root">
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#065f46;font-weight:bold;">
-      Memuat Portal E-Tahfiz & Tilawah SMPN 4 Malang...
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#065f46;font-family:sans-serif;">
+      <div style="font-size:18px;font-weight:bold;margin-bottom:8px;">Memuat Aplikasi E-Tahfiz & Tilawah SMPN 4 Malang...</div>
+      <div style="font-size:13px;color:#64748b;">Mohon tunggu sebentar...</div>
     </div>
   </div>
 
@@ -44,30 +46,36 @@
     async function loadApp() {
       try {
         const res = await fetch('./e_tahfiz_tilawah_smpn_4_malang.tsx');
-        if (!res.ok) throw new Error('File .tsx tidak ditemukan (HTTP ' + res.status + ')');
+        if (!res.ok) throw new Error('File .tsx tidak ditemukan (Status: ' + res.status + ')');
         
         const tsxCode = await res.text();
 
-        // Ubah 'export default function App()' menjadi 'function App()' dan tambahkan perender
+        // Ubah export default menjadi fungsi biasa dan tambahkan perender React
         const modifiedCode = tsxCode.replace('export default function App()', 'function App()') +
           '\nimport { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root")).render(<App />);';
-        
-        // PENTING: Gunakan modules: false pada preset env agar 'import' tidak diubah menjadi 'require()'
+
+        // Kompilasi TSX dengan mempertahankan ES Modules (agar import tidak diubah jadi require)
         const compiled = Babel.transform(modifiedCode, {
           presets: [
-            ['env', { modules: false }],
-            'react',
+            ['react', { runtime: 'classic' }],
             'typescript'
           ],
           sourceType: 'module',
           filename: 'app.tsx'
         }).code;
 
-        // Jalankan kode hasil terjemahan sebagai ES Module
+        // Jalankan kode hasil kompilasi sebagai ES Module menggunakan Blob URL
         const blob = new Blob([compiled], { type: 'text/javascript' });
         const moduleUrl = URL.createObjectURL(blob);
         await import(moduleUrl);
       } catch (err) {
         document.getElementById('root').innerHTML = 
           '<div style="padding:24px;color:#be123c;font-family:monospace;background:#ffe4e6;margin:20px;border-radius:12px;">' +
-          '<strong>Detail Kendala Teknis:</strong><br/>
+          '<strong>Detail Kendala Teknis:</strong><br/>' + err.message + '</div>';
+        console.error(err);
+      }
+    }
+    loadApp();
+  </script>
+</body>
+</html>
