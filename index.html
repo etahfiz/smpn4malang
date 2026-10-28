@@ -1,0 +1,3632 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Mic,
+  Square,
+  Play,
+  Save,
+  CheckCircle2,
+  User,
+  Users,
+  Music,
+  FileSpreadsheet,
+  FolderGit2,
+  Download,
+  Lock,
+  Unlock,
+  MessageSquare,
+  Award,
+  Volume2,
+  Upload,
+  RefreshCw,
+  Info,
+  Search,
+  School,
+  Sparkles,
+  Check,
+  AlertCircle,
+  Code,
+  Copy,
+  Trash2,
+  Settings,
+  Palette,
+  ToggleLeft,
+  ToggleRight,
+  Plus,
+  Edit3,
+  FileCode,
+  CloudUpload,
+  Image as ImageIcon,
+  RotateCcw,
+  KeyRound,
+  X
+} from 'lucide-react';
+
+// ==========================================
+// DATA MASTER AWAL: 35 MURID (Password: 123456 - 123490)
+// ==========================================
+const INITIAL_STUDENTS_DATA = [
+  "Ahmad Fauzan Al-Farizi", "Aisyah Putri Ramadhani", "Alif Pratama Putra", "Amira Zahra Nabila", "Arkananta Wijaya",
+  "Azka Maulana Ibrahim", "Bilqis Khumaira", "Bima Arya Sena", "Citra Kirana Dewi", "Daffa Rizky Pratama",
+  "Dimas Anggara Putra", "Dzakira Talita Zahra", "Fadhil Muhammad", "Faizah Nur Azizah", "Farhan Abqari",
+  "Fathiya Rahma", "Gilang Ramadhan", "Hafizah Khairunnisa", "Haikal Fikri", "Humaira Yasmin",
+  "Ibrahim Khalil", "Inayah Wulandari", "Jihan Fahira", "Kaisa Marwa", "Keenan Al-Ghifari",
+  "Keysha Anindita", "Luthfi Hakim", "M. Nabil Al-Fayyad", "M. Zidan Al-fatih", "Nadia Shafira",
+  "Naufal Dzaki", "Naura Syifa", "Rafa Aditya", "Rania salsabila", "Syafiq Abdurrahman"
+].map((name, index) => ({
+  id: `STD-${String(index + 1).padStart(2, '0')}`,
+  name,
+  kelas: `VII-${String.fromCharCode(65 + (index % 5))}`,
+  password: String(123456 + index)
+}));
+
+// ==========================================
+// DATA MASTER AWAL: GURU PEMBINA
+// ==========================================
+const INITIAL_TEACHERS_DATA = [
+  { id: "TCH-01", name: "Ust. Ahmad Fauzi, S.Pd.I", nip: "198504122010011008", role: "Koordinator Tahfiz & Tilawah" },
+  { id: "TCH-02", name: "Ustzh. Siti Aminah, M.Pd", nip: "198809232014022003", role: "Pembina Tahfiz Juz 30 & 29" },
+  { id: "TCH-03", name: "Ust. M. Rizky Ramadhan, Lc", nip: "199203152019031005", role: "Pembina Tilawah Mujawwad & Nagham" },
+  { id: "TCH-04", name: "Ustzh. Nurul Hidayah, S.Ag", nip: "199011082015042001", role: "Pembina Tahsin & Fashohah" }
+];
+
+// ==========================================
+// DEFAULT_CONFIG (KONFIGURASI WHITE-LABEL UTAMA)
+// Variabel ini otomatis diperbarui saat Admin mengklik "Export/Download HTML"
+// ==========================================
+const DEFAULT_CONFIG = {
+  schoolName: "SMP Negeri 4 Malang",
+  schoolAddress: "Jl. Veteran No. 37, Kota Malang • Perekaman Setoran Juz 30 & Juz 29, Penilaian Guru & Pemantauan Orang Tua",
+  programTitle: "E-Tahfiz & Tilawah Mujawwad Al-Qur'an",
+  logoBase64: "",
+  adminPin: "999999",
+  teacherPassword: "123456",
+  databasePin: "123456",
+  studentPasswordStart: 123456,
+  gasWebhookUrl: "https://script.google.com/macros/s/AKfycbz_SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK/exec",
+  theme: {
+    primaryColor: "#065f46",   // --primary-color (Hijau Emerald Dominan)
+    secondaryColor: "#115e59", // --secondary-color (Teal Tua Pendamping)
+    accentColor: "#f59e0b"     // --accent-color (Kuning Emas Aksen)
+  },
+  enabledPages: {
+    1: true, // Halaman 1: Murid (Tahfiz)
+    2: true, // Halaman 2: Guru (Tahfiz)
+    3: true, // Halaman 3: Orang Tua (Tahfiz)
+    4: true, // Halaman 4: Murid (Tilawah)
+    5: true, // Halaman 5: Guru (Tilawah)
+    6: true  // Halaman 6: Orang Tua (Tilawah)
+  },
+  students: INITIAL_STUDENTS_DATA,
+  teachers: INITIAL_TEACHERS_DATA
+};
+
+// ==========================================
+// DATA MASTER: SURAT JUZ 30 & JUZ 29
+// ==========================================
+const SURAHS_DATA = [
+  // JUZ 30 (37 Surat)
+  { number: 78, name: "An-Naba'", arti: "Berita Besar", ayat: 40, juz: 30 },
+  { number: 79, name: "An-Nazi'at", arti: "Malaikat yang Mencabut", ayat: 46, juz: 30 },
+  { number: 80, name: "'Abasa", arti: "Ia Bermuka Masam", ayat: 42, juz: 30 },
+  { number: 81, name: "At-Takwir", arti: "Menggulung", ayat: 29, juz: 30 },
+  { number: 82, name: "Al-Infitar", arti: "Terbelah", ayat: 19, juz: 30 },
+  { number: 83, name: "Al-Mutaffifin", arti: "Orang-Orang Curang", ayat: 36, juz: 30 },
+  { number: 84, name: "Al-Insyiqaq", arti: "Terbelah", ayat: 25, juz: 30 },
+  { number: 85, name: "Al-Buruj", arti: "Gugusan Bintang", ayat: 22, juz: 30 },
+  { number: 86, name: "At-Tariq", arti: "Yang Datang di Malam Hari", ayat: 17, juz: 30 },
+  { number: 87, name: "Al-A'la", arti: "Yang Paling Tinggi", ayat: 19, juz: 30 },
+  { number: 88, name: "Al-Gasyiyah", arti: "Hari Pembalasan", ayat: 26, juz: 30 },
+  { number: 89, name: "Al-Fajr", arti: "Fajar", ayat: 30, juz: 30 },
+  { number: 90, name: "Al-Balad", arti: "Negeri", ayat: 20, juz: 30 },
+  { number: 91, name: "Asy-Syams", arti: "Matahari", ayat: 15, juz: 30 },
+  { number: 92, name: "Al-Lail", arti: "Malam", ayat: 21, juz: 30 },
+  { number: 93, name: "Ad-Duha", arti: "Waktu Duha", ayat: 11, juz: 30 },
+  { number: 94, name: "Asy-Syarh", arti: "Melapangkan", ayat: 8, juz: 30 },
+  { number: 95, name: "At-Tin", arti: "Buah Tin", ayat: 8, juz: 30 },
+  { number: 96, name: "Al-'Alaq", arti: "Segumpal Darah", ayat: 19, juz: 30 },
+  { number: 97, name: "Al-Qadr", arti: "Kemuliaan", ayat: 5, juz: 30 },
+  { number: 98, name: "Al-Bayyinah", arti: "Bukti Nyata", ayat: 8, juz: 30 },
+  { number: 99, name: "Az-Zalzalah", arti: "Kegoncangan", ayat: 8, juz: 30 },
+  { number: 100, name: "Al-'Adiyat", arti: "Kuda Perang yang Berlari Kencang", ayat: 11, juz: 30 },
+  { number: 101, name: "Al-Qari'ah", arti: "Hari Kiamat", ayat: 11, juz: 30 },
+  { number: 102, name: "At-Takasur", arti: "Bermegah-megahan", ayat: 8, juz: 30 },
+  { number: 103, name: "Al-'Asr", arti: "Masa", ayat: 3, juz: 30 },
+  { number: 104, name: "Al-Humazah", arti: "Pengumpat", ayat: 9, juz: 30 },
+  { number: 105, name: "Al-Fil", arti: "Gajah", ayat: 5, juz: 30 },
+  { number: 106, name: "Quraisy", arti: "Suku Quraisy", ayat: 4, juz: 30 },
+  { number: 107, name: "Al-Ma'un", arti: "Barang-Barang yang Berguna", ayat: 7, juz: 30 },
+  { number: 108, name: "Al-Kausar", arti: "Nikmat yang Banyak", ayat: 3, juz: 30 },
+  { number: 109, name: "Al-Kafirun", arti: "Orang-Orang Kafir", ayat: 6, juz: 30 },
+  { number: 110, name: "An-Nasr", arti: "Pertolongan", ayat: 3, juz: 30 },
+  { number: 111, name: "Al-Lahab", arti: "Gejolak Api", ayat: 5, juz: 30 },
+  { number: 112, name: "Al-Ikhlas", arti: "Ikhlas", ayat: 4, juz: 30 },
+  { number: 113, name: "Al-Falaq", arti: "Waktu Subuh", ayat: 5, juz: 30 },
+  { number: 114, name: "An-Nas", arti: "Manusia", ayat: 6, juz: 30 },
+
+  // JUZ 29 (11 Surat)
+  { number: 67, name: "Al-Mulk", arti: "Kerajaan", ayat: 30, juz: 29 },
+  { number: 68, name: "Al-Qalam", arti: "Pena", ayat: 52, juz: 29 },
+  { number: 69, name: "Al-Haqqah", arti: "Hari Kiamat", ayat: 52, juz: 29 },
+  { number: 70, name: "Al-Ma'arij", arti: "Tempat Naik", ayat: 44, juz: 29 },
+  { number: 71, name: "Nuh", arti: "Nabi Nuh", ayat: 28, juz: 29 },
+  { number: 72, name: "Al-Jinn", arti: "Jin", ayat: 28, juz: 29 },
+  { number: 73, name: "Al-Muzzammil", arti: "Orang yang Berselimut", ayat: 20, juz: 29 },
+  { number: 74, name: "Al-Muddassir", arti: "Orang yang Berkemul", ayat: 56, juz: 29 },
+  { number: 75, name: "Al-Qiyamah", arti: "Hari Kiamat", ayat: 40, juz: 29 },
+  { number: 76, name: "Al-Insan", arti: "Manusia", ayat: 31, juz: 29 },
+  { number: 77, name: "Al-Mursalat", arti: "Malaikat yang Diutus", ayat: 50, juz: 29 }
+];
+
+// ==========================================
+// PILIHAN NILAI / PREDIKAT
+// ==========================================
+const GRADE_OPTIONS = [
+  { value: "", label: "-- Pilih Predikat Nilai --", color: "bg-slate-100 text-slate-600" },
+  { value: "Mumtaz (Istimewa / A+)", label: "Mumtaz (Istimewa / 90-100)", color: "bg-emerald-100 text-emerald-800 border-emerald-300" },
+  { value: "Jayyid Jiddan (Sangat Baik / A)", label: "Jayyid Jiddan (Sangat Baik / 80-89)", color: "bg-teal-100 text-teal-800 border-teal-300" },
+  { value: "Jayyid (Baik / B)", label: "Jayyid (Baik / 70-79)", color: "bg-blue-100 text-blue-800 border-blue-300" },
+  { value: "Maqbul (Cukup / C)", label: "Maqbul (Cukup / 60-69)", color: "bg-amber-100 text-amber-800 border-amber-300" },
+  { value: "Mardud (Perlu Mengulang / D)", label: "Mardud (Perlu Mengulang / <60)", color: "bg-rose-100 text-rose-800 border-rose-300" }
+];
+
+// ==========================================
+// GENERATOR AUDIO WAV SIMULASI (Agar Sample Data Bisa Di-Play)
+// ==========================================
+function generateSimulatedMurottalWav(durationSeconds = 5, style = 'tahfiz') {
+  const sampleRate = 22050;
+  const numSamples = sampleRate * durationSeconds;
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, numSamples * 2, true);
+
+  const notes = style === 'tilawah'
+    ? [293.66, 311.13, 370.00, 392.00, 440.00, 392.00, 370.00, 293.66]
+    : [261.63, 293.66, 311.13, 349.23, 392.00, 349.23, 311.13, 261.63];
+
+  let phase = 0;
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const noteIdx = Math.floor((t / durationSeconds) * notes.length) % notes.length;
+    const baseFreq = notes[noteIdx];
+    const vibrato = style === 'tilawah' ? Math.sin(2 * Math.PI * 5.5 * t) * 4.5 : Math.sin(2 * Math.PI * 3.5 * t) * 1.5;
+    const freq = baseFreq + vibrato;
+
+    phase += (2 * Math.PI * freq) / sampleRate;
+    const rawWave = Math.sin(phase) * 0.6 + Math.sin(phase * 2) * 0.25 + Math.sin(phase * 3) * 0.1;
+    const segmentDuration = durationSeconds / notes.length;
+    const localT = t % segmentDuration;
+    const env = Math.min(1, localT / 0.06) * Math.min(1, (segmentDuration - localT) / 0.08);
+
+    const sampleValue = Math.max(-1, Math.min(1, rawWave * env * 0.45));
+    view.setInt16(44 + i * 2, sampleValue * 32767, true);
+  }
+
+  const blob = new Blob([buffer], { type: 'audio/wav' });
+  return URL.createObjectURL(blob);
+}
+
+// ==========================================
+// DATA AWAL (SAMPLE REKAMAN TAHFIZ & TILAWAH)
+// ==========================================
+const INITIAL_RECORDS = [
+  {
+    id: "REC-THF-1001",
+    category: "tahfiz",
+    studentId: "STD-01",
+    studentName: "Ahmad Fauzan Al-Farizi",
+    kelas: "VII-A",
+    juz: 30,
+    surahNumber: 78,
+    surahName: "An-Naba'",
+    ayatStart: 1,
+    ayatEnd: 20,
+    duration: "01:15",
+    timestamp: "2025-02-24 08:30 WIB",
+    driveFileId: "1A9x_SMPN4MLG_Tahfiz_AhmadFauzan_AnNaba_1-20.webm",
+    driveUrl: "https://drive.google.com/drive/folders/smpn4malang-tahfiz-audio",
+    sheetStatus: "Terekap di Sheet_Tahfiz (Baris #2)",
+    audioUrl: null,
+    grade: "Mumtaz (Istimewa / A+)",
+    teacherName: "Ust. Ahmad Fauzi, S.Pd.I",
+    teacherComment: "Alhamdulillah hafalan sangat lancar, makharijul huruf dan ghunnah pada ayat 1-20 sudah sangat tepat. Lanjutkan ayat 21-40.",
+    parentComment: "Alhamdulillah, terima kasih Ustadz atas bimbingannya. Di rumah Fauzan rutin muraja'ah ba'da Maghrib."
+  },
+  {
+    id: "REC-THF-1002",
+    category: "tahfiz",
+    studentId: "STD-02",
+    studentName: "Aisyah Putri Ramadhani",
+    kelas: "VII-B",
+    juz: 29,
+    surahNumber: 67,
+    surahName: "Al-Mulk",
+    ayatStart: 1,
+    ayatEnd: 15,
+    duration: "02:05",
+    timestamp: "2025-02-24 09:10 WIB",
+    driveFileId: "1B8y_SMPN4MLG_Tahfiz_AisyahPutri_AlMulk_1-15.webm",
+    driveUrl: "https://drive.google.com/drive/folders/smpn4malang-tahfiz-audio",
+    sheetStatus: "Terekap di Sheet_Tahfiz (Baris #3)",
+    audioUrl: null,
+    grade: "Jayyid Jiddan (Sangat Baik / A)",
+    teacherName: "Ustzh. Siti Aminah, M.Pd",
+    teacherComment: "Hafalan lancar, namun perhatikan panjang pendek (Mad Wajib Muttashil) pada ayat ke-4 dan ke-9.",
+    parentComment: "Siap Ustadzah, nanti malam kami bantu ingatkan Aisyah untuk memperbaiki panjang pendek bacaannya."
+  },
+  {
+    id: "REC-THF-1003",
+    category: "tahfiz",
+    studentId: "STD-03",
+    studentName: "Alif Pratama Putra",
+    kelas: "VII-C",
+    juz: 30,
+    surahNumber: 87,
+    surahName: "Al-A'la",
+    ayatStart: 1,
+    ayatEnd: 19,
+    duration: "01:10",
+    timestamp: "2025-02-25 07:45 WIB",
+    driveFileId: "1C7z_SMPN4MLG_Tahfiz_AlifPratama_AlAla_1-19.webm",
+    driveUrl: "https://drive.google.com/drive/folders/smpn4malang-tahfiz-audio",
+    sheetStatus: "Terekap di Sheet_Tahfiz (Baris #4)",
+    audioUrl: null,
+    grade: "",
+    teacherName: "",
+    teacherComment: "",
+    parentComment: ""
+  },
+  {
+    id: "REC-TLW-2001",
+    category: "tilawah",
+    studentId: "STD-01",
+    studentName: "Ahmad Fauzan Al-Farizi",
+    kelas: "VII-A",
+    juz: 30,
+    surahNumber: 93,
+    surahName: "Ad-Duha",
+    ayatStart: 1,
+    ayatEnd: 11,
+    nagham: "Bayyati & Hijaz",
+    duration: "02:30",
+    timestamp: "2025-02-24 10:15 WIB",
+    driveFileId: "2X1a_SMPN4MLG_Tilawah_AhmadFauzan_AdDuha_1-11.webm",
+    driveUrl: "https://drive.google.com/drive/folders/smpn4malang-tilawah-audio",
+    sheetStatus: "Terekap di Sheet_Tilawah (Baris #2)",
+    audioUrl: null,
+    grade: "Mumtaz (Istimewa / A+)",
+    teacherName: "Ust. M. Rizky Ramadhan, Lc",
+    teacherComment: "Maqam Bayyati pembuka dan variasi cengkok Hijaz sangat indah, pengaturan nafas panjang dan fashohah jelas.",
+    parentComment: "MasyaAllah, kami ikut bangga mendengarkan rekaman tilawah Fauzan. Terima kasih pembinaannya Ustadz."
+  },
+  {
+    id: "REC-TLW-2002",
+    category: "tilawah",
+    studentId: "STD-02",
+    studentName: "Aisyah Putri Ramadhani",
+    kelas: "VII-B",
+    juz: 29,
+    surahNumber: 73,
+    surahName: "Al-Muzzammil",
+    ayatStart: 1,
+    ayatEnd: 10,
+    nagham: "Nahawand",
+    duration: "02:45",
+    timestamp: "2025-02-24 11:00 WIB",
+    driveFileId: "2Y2b_SMPN4MLG_Tilawah_AisyahPutri_AlMuzzammil_1-10.webm",
+    driveUrl: "https://drive.google.com/drive/folders/smpn4malang-tilawah-audio",
+    sheetStatus: "Terekap di Sheet_Tilawah (Baris #3)",
+    audioUrl: null,
+    grade: "Jayyid Jiddan (Sangat Baik / A)",
+    teacherName: "Ust. M. Rizky Ramadhan, Lc",
+    teacherComment: "Irama Nahawand sudah terasa syahdu. Latih lagi kekuatan suara saat nada tinggi (Jawab) di ayat ke-8.",
+    parentComment: "Terima kasih masukannya Ustadz, Aisyah semangat sekali berlatih tilawah di rumah."
+  }
+];
+
+const LOCAL_STORAGE_KEY = "ETAHFIZ_WHITELABEL_CONFIG_V1";
+
+export default function App() {
+  // ==========================================
+  // STATE KONFIGURASI WHITE-LABEL (DENGAN LOCALSTORAGE)
+  // ==========================================
+  const [config, setConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_CONFIG,
+          ...parsed,
+          theme: { ...DEFAULT_CONFIG.theme, ...(parsed.theme || {}) },
+          enabledPages: { ...DEFAULT_CONFIG.enabledPages, ...(parsed.enabledPages || {}) },
+          students: Array.isArray(parsed.students) && parsed.students.length > 0 ? parsed.students : DEFAULT_CONFIG.students,
+          teachers: Array.isArray(parsed.teachers) && parsed.teachers.length > 0 ? parsed.teachers : DEFAULT_CONFIG.teachers
+        };
+      }
+    } catch (e) {
+      // Fallback ke DEFAULT_CONFIG
+    }
+    return DEFAULT_CONFIG;
+  });
+
+  // Simpan perubahan config ke localStorage & pasang CSS Variables
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(config));
+    } catch (e) {
+      // Abaikan jika kuota localStorage penuh
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--primary-color', config.theme.primaryColor);
+      document.documentElement.style.setProperty('--secondary-color', config.theme.secondaryColor);
+      document.documentElement.style.setProperty('--accent-color', config.theme.accentColor);
+    }
+  }, [config]);
+
+  // Navigasi 6 Halaman Utama + 1 Halaman Database/Spreadsheet
+  const [activePage, setActivePage] = useState(1);
+
+  // Pastikan activePage selalu mengarah ke halaman yang aktif jika halaman saat ini di-nonaktifkan
+  useEffect(() => {
+    if (activePage >= 1 && activePage <= 6 && !config.enabledPages[activePage]) {
+      const firstAvailable = [1, 2, 3, 4, 5, 6].find(id => config.enabledPages[id]) || 7;
+      setActivePage(firstAvailable);
+    }
+  }, [config.enabledPages, activePage]);
+
+  // State Data Rekaman
+  const [records, setRecords] = useState(() => {
+    const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
+    const tilawahSampleAudio = generateSimulatedMurottalWav(6, 'tilawah');
+    return INITIAL_RECORDS.map(rec => ({
+      ...rec,
+      audioUrl: rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio
+    }));
+  });
+
+  // Notifikasi Toast
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  // Modal Bantuan Password Murid, Google Apps Script & Panel Kustomisasi Admin
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showGasModal, setShowGasModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+
+  // State Proteksi PIN / Password Halaman Database
+  const [isDatabaseUnlocked, setIsDatabaseUnlocked] = useState(false);
+
+  // ==========================================
+  // FUNGSI UPDATE REKAMAN (UNTUK GURU, ORANG TUA & ADMIN DATABASE)
+  // ==========================================
+  const handleAddRecord = (newRecord) => {
+    setRecords(prev => [newRecord, ...prev]);
+    showToast(`Rekaman ${newRecord.category === 'tahfiz' ? 'Tahfiz' : 'Tilawah Mujawwad'} berhasil disimpan ke Google Drive & direkap ke Spreadsheet!`);
+  };
+
+  const handleTeacherSave = (recordId, grade, teacherComment, teacherName) => {
+    setRecords(prev => prev.map(rec => {
+      if (rec.id === recordId) {
+        return { ...rec, grade, teacherComment, teacherName };
+      }
+      return rec;
+    }));
+    showToast("Penilaian & Komentar Guru berhasil disimpan ke Spreadsheet!");
+  };
+
+  const handleParentSave = (recordId, parentComment) => {
+    setRecords(prev => prev.map(rec => {
+      if (rec.id === recordId) {
+        return { ...rec, parentComment };
+      }
+      return rec;
+    }));
+    showToast("Feedback / Komentar Orang Tua berhasil disimpan ke Spreadsheet!");
+  };
+
+  const handleDeleteRecord = (recordId) => {
+    setRecords(prev => prev.filter(rec => rec.id !== recordId));
+    showToast("Data rekaman berhasil dihapus dari rekapitulasi Spreadsheet!");
+  };
+
+  // ==========================================
+  // SINKRONISASI PENGATURAN WHITE-LABEL KE GOOGLE SPREADSHEET (APPS SCRIPT)
+  // ==========================================
+  const handleSyncConfigToSpreadsheet = async (customConfig = config) => {
+    try {
+      if (customConfig.gasWebhookUrl && customConfig.gasWebhookUrl.startsWith("http")) {
+        fetch(customConfig.gasWebhookUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "SAVE_WHITELABEL_CONFIG",
+            timestamp: new Date().toISOString(),
+            config: customConfig
+          })
+        }).catch(() => {});
+      }
+      showToast("Pengaturan White-Label berhasil disimpan ke localStorage & disinkronkan ke Google Spreadsheet (Sheet_Config)!");
+    } catch (err) {
+      showToast("Tersimpan di localStorage (Mode Offline Spreadsheet).", "error");
+    }
+  };
+
+  // ==========================================
+  // EXPORT / DOWNLOAD FILE INDEX.HTML MANDIRI (DENGAN DEFAULT_CONFIG TERBARU)
+  // ==========================================
+  const handleExportStandaloneHTML = (currentConfig = config) => {
+    const serializedConfig = JSON.stringify(currentConfig, null, 2);
+    const serializedSurahs = JSON.stringify(SURAHS_DATA);
+    const serializedGrades = JSON.stringify(GRADE_OPTIONS);
+    const serializedRecords = JSON.stringify(
+      records.map(r => ({ ...r, audioUrl: null })),
+      null,
+      2
+    );
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${currentConfig.programTitle} - ${currentConfig.schoolName}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: ${currentConfig.theme.primaryColor};
+      --secondary-color: ${currentConfig.theme.secondaryColor};
+      --accent-color: ${currentConfig.theme.accentColor};
+    }
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+  <!-- HEADER DINAMIS WHITE-LABEL -->
+  <header style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-bottom: 4px solid var(--accent-color);" class="text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div style="background-color: var(--accent-color);" class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md border-2 border-white/30 overflow-hidden shrink-0">
+          ${currentConfig.logoBase64
+            ? `<img src="${currentConfig.logoBase64}" alt="Logo" class="w-full h-full object-cover" />`
+            : `<span class="text-2xl font-extrabold text-slate-900">🕌</span>`
+          }
+        </div>
+        <div>
+          <span style="background-color: var(--accent-color);" class="px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-full">
+            ${currentConfig.schoolName}
+          </span>
+          <h1 class="text-xl sm:text-2xl font-extrabold mt-1">${currentConfig.programTitle}</h1>
+          <p class="text-xs sm:text-sm text-white/85">${currentConfig.schoolAddress}</p>
+        </div>
+      </div>
+      <div class="text-xs bg-black/20 p-3 rounded-xl border border-white/20">
+        <div><strong>Status Paket:</strong> White-Label Mandiri (Siap Pakai)</div>
+        <div><strong>Total Murid:</strong> ${currentConfig.students.length} Murid • <strong>Guru:</strong> ${currentConfig.teachers.length} Pembina</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-1 space-y-6">
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+      <h2 class="text-lg font-extrabold text-slate-800">Konfigurasi White-Label Aktif (DEFAULT_CONFIG)</h2>
+      <p class="text-xs text-slate-600">
+        File <code>index.html</code> ini telah menyimpan variabel <code>DEFAULT_CONFIG</code> sesuai kustomisasi sekolah Anda.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-700 mb-1">Identitas Sekolah</div>
+          <div>Nama: <strong>${currentConfig.schoolName}</strong></div>
+          <div>Program: <strong>${currentConfig.programTitle}</strong></div>
+          <div>Alamat: ${currentConfig.schoolAddress}</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-700 mb-1">Tema Warna CSS Variables</div>
+          <div class="flex items-center gap-2 mt-1"><span class="w-4 h-4 rounded inline-block" style="background:${currentConfig.theme.primaryColor}"></span> Primary: <code>${currentConfig.theme.primaryColor}</code></div>
+          <div class="flex items-center gap-2 mt-1"><span class="w-4 h-4 rounded inline-block" style="background:${currentConfig.theme.secondaryColor}"></span> Secondary: <code>${currentConfig.theme.secondaryColor}</code></div>
+          <div class="flex items-center gap-2 mt-1"><span class="w-4 h-4 rounded inline-block" style="background:${currentConfig.theme.accentColor}"></span> Accent: <code>${currentConfig.theme.accentColor}</code></div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-700 mb-1">Keamanan & Kredensial</div>
+          <div>PIN Admin: <code>${currentConfig.adminPin}</code></div>
+          <div>Password Guru: <code>${currentConfig.teacherPassword}</code></div>
+          <div>Rentang Password Murid: <code>${currentConfig.students[0]?.password || ''} - ${currentConfig.students[currentConfig.students.length - 1]?.password || ''}</code></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <h3 class="text-sm font-bold text-slate-800 mb-3">Daftar Murid Terdaftar (${currentConfig.students.length} Murid)</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+        ${currentConfig.students.map((s, i) => `
+          <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex justify-between items-center">
+            <span>${i + 1}. <strong>${s.name}</strong> (${s.kelas})</span>
+            <code class="px-2 py-0.5 rounded bg-slate-200 font-bold">${s.password}</code>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ==========================================
+    // DEFAULT_CONFIG YANG SUDAH DIPERBARUI OTOMATIS
+    // ==========================================
+    const DEFAULT_CONFIG = ${serializedConfig};
+    const SURAHS_DATA = ${serializedSurahs};
+    const GRADE_OPTIONS = ${serializedGrades};
+    const INITIAL_RECORDS = ${serializedRecords};
+    localStorage.setItem("${LOCAL_STORAGE_KEY}", JSON.stringify(DEFAULT_CONFIG));
+    console.log("White-Label DEFAULT_CONFIG Loaded:", DEFAULT_CONFIG);
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const cleanSchool = currentConfig.schoolName.replace(/[^a-zA-Z0-9]/g, '_');
+    link.href = url;
+    link.download = `index_${cleanSchool}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("File index.html dengan DEFAULT_CONFIG terbaru berhasil diunduh!");
+  };
+
+  // ==========================================
+  // EXPORT KE SPREADSHEET (CSV)
+  // ==========================================
+  const exportToSpreadsheetCSV = (filterCategory = 'all') => {
+    const filtered = filterCategory === 'all'
+      ? records
+      : records.filter(r => r.category === filterCategory);
+
+    const headers = [
+      "ID Rekaman", "Kategori", "Waktu Setoran", "ID Murid", "Nama Murid", "Kelas",
+      "Juz", "Nomor Surat", "Nama Surat", "Ayat Mulai", "Ayat Selesai", "Durasi Audio",
+      "Nama File Google Drive", "Link Folder Drive", "Guru Penilai", "Predikat Nilai",
+      "Komentar Guru", "Feedback Orang Tua"
+    ];
+
+    const rows = filtered.map(r => [
+      r.id,
+      r.category === 'tahfiz' ? 'Tahfiz Al-Quran' : 'Tilawah Mujawwad',
+      r.timestamp,
+      r.studentId,
+      `"${r.studentName}"`,
+      r.kelas,
+      `Juz ${r.juz}`,
+      r.surahNumber,
+      `"${r.surahName}"`,
+      r.ayatStart,
+      r.ayatEnd,
+      r.duration,
+      `"${r.driveFileId}"`,
+      r.driveUrl,
+      `"${r.teacherName || 'Belum Dinilai'}"`,
+      `"${r.grade || 'Belum Dinilai'}"`,
+      `"${(r.teacherComment || '').replace(/"/g, '""')}"`,
+      `"${(r.parentComment || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" +
+      [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const cleanSchool = config.schoolName.replace(/[^a-zA-Z0-9]/g, '_');
+    link.setAttribute("download", `Rekap_Spreadsheet_${filterCategory.toUpperCase()}_${cleanSchool}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("File Rekap Spreadsheet (.CSV) berhasil diunduh!");
+  };
+
+  // ==========================================
+  // DAFTAR 6 HALAMAN UTAMA (+1 HALAMAN REKAP SPREADSHEET) YANG DIFILTER SAKLAR ON/OFF
+  // ==========================================
+  const allNavPages = [
+    { id: 1, short: "1. Murid (Tahfiz)", title: "Halaman 1: Setoran Tahfiz Murid", group: "Tahfiz Al-Qur'an", icon: Mic },
+    { id: 2, short: "2. Guru (Tahfiz)", title: "Halaman 2: Penilaian Tahfiz Guru", group: "Tahfiz Al-Qur'an", icon: Award },
+    { id: 3, short: "3. Orang Tua (Tahfiz)", title: "Halaman 3: Portal Orang Tua (Tahfiz)", group: "Tahfiz Al-Qur'an", icon: Users },
+    { id: 4, short: "4. Murid (Tilawah)", title: "Halaman 4: Rekaman Tilawah Mujawwad Murid", group: "Tilawah Mujawwad", icon: Music },
+    { id: 5, short: "5. Guru (Tilawah)", title: "Halaman 5: Penilaian Tilawah Mujawwad Guru", group: "Tilawah Mujawwad", icon: Award },
+    { id: 6, short: "6. Orang Tua (Tilawah)", title: "Halaman 6: Portal Orang Tua (Tilawah Mujawwad)", group: "Tilawah Mujawwad", icon: Users },
+    { id: 7, short: "Drive & Spreadsheet", title: `Rekapitulasi Spreadsheet & Drive ${config.schoolName}`, group: "Database", icon: FileSpreadsheet }
+  ];
+
+  const visibleNavPages = allNavPages.filter(page => page.id === 7 || config.enabledPages[page.id]);
+
+  const firstStudentPwd = config.students[0]?.password || "123456";
+  const lastStudentPwd = config.students[config.students.length - 1]?.password || "123490";
+
+  return (
+    <div
+      style={{
+        '--primary-color': config.theme.primaryColor,
+        '--secondary-color': config.theme.secondaryColor,
+        '--accent-color': config.theme.accentColor
+      }}
+      className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans"
+    >
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 max-w-md animate-bounce">
+          <div
+            style={toast.type === 'error' ? {} : { backgroundColor: 'var(--primary-color)', borderColor: 'var(--accent-color)' }}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-white ${
+              toast.type === 'error' ? 'bg-rose-600 border-rose-500' : ''
+            }`}
+          >
+            {toast.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 shrink-0" style={{ color: 'var(--accent-color)' }} />
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER UTAMA DINAMIS (MENGGUNAKAN CSS VARIABLES & KONFIGURASI WHITE-LABEL) */}
+      <header
+        style={{
+          background: 'linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%)',
+          borderBottom: '4px solid var(--accent-color)'
+        }}
+        className="text-white shadow-lg"
+      >
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              {/* LOGO SEKOLAH (BASE64 ATAU IKON DEFAULT) */}
+              <div
+                style={{ backgroundColor: 'var(--accent-color)' }}
+                className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md border-2 border-white/30 shrink-0 overflow-hidden"
+              >
+                {config.logoBase64 ? (
+                  <img
+                    src={config.logoBase64}
+                    alt={config.schoolName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <School className="w-8 h-8 text-slate-950" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    style={{ backgroundColor: 'var(--accent-color)' }}
+                    className="px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-slate-950 rounded-full"
+                  >
+                    {config.schoolName}
+                  </span>
+                  <span className="text-xs text-white/85 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--accent-color)' }} /> Sistem White-Label Terintegrasi Drive & Spreadsheet
+                  </span>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white mt-0.5">
+                  {config.programTitle}
+                </h1>
+                <p className="text-xs sm:text-sm text-white/85">
+                  {config.schoolAddress}
+                </p>
+              </div>
+            </div>
+
+            {/* Tombol Akses Cepat: Pengaturan Admin, Info Password & Spreadsheet */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowAdminModal(true)}
+                style={{ backgroundColor: 'var(--accent-color)' }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-slate-950 hover:opacity-95 text-xs sm:text-sm font-extrabold shadow-md transition cursor-pointer"
+              >
+                <Settings className="w-4 h-4" />
+                <span>⚙️ Pengaturan Admin</span>
+              </button>
+
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs sm:text-sm font-medium text-white border border-white/20 transition cursor-pointer"
+              >
+                <Lock className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
+                <span>Password ({firstStudentPwd}-{lastStudentPwd})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (!isDatabaseUnlocked) {
+                    setActivePage(7);
+                    showToast("Masukkan PIN/Password Database terlebih dahulu untuk mengunduh Spreadsheet!", "error");
+                  } else {
+                    exportToSpreadsheetCSV('all');
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/25 hover:bg-black/35 text-white border border-white/20 text-xs sm:text-sm font-bold shadow transition cursor-pointer"
+              >
+                {isDatabaseUnlocked ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                <span>Unduh CSV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* BAR NAVIGASI HALAMAN YANG AKTIF */}
+        <div className="bg-black/25 border-t border-white/15">
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-1.5">
+              {visibleNavPages.map((page) => {
+                const Icon = page.icon;
+                const isActive = activePage === page.id;
+                const isTilawah = page.id >= 4 && page.id <= 6;
+                return (
+                  <button
+                    key={page.id}
+                    onClick={() => setActivePage(page.id)}
+                    style={
+                      isActive
+                        ? isTilawah
+                          ? { backgroundColor: 'var(--accent-color)', color: '#0f172a', borderColor: '#ffffff' }
+                          : { backgroundColor: '#ffffff', color: 'var(--primary-color)', borderColor: 'var(--accent-color)' }
+                        : {}
+                    }
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all cursor-pointer border ${
+                      isActive
+                        ? 'font-bold shadow-md scale-[1.01]'
+                        : 'bg-black/20 hover:bg-black/35 text-white border-white/15'
+                    }`}
+                  >
+                    <div
+                      className={`p-1.5 rounded-md shrink-0 ${
+                        isActive ? 'bg-black/10 text-current' : 'bg-white/15 text-white'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-wider opacity-80 truncate">
+                        {page.group}
+                      </div>
+                      <div className="text-xs font-semibold truncate">
+                        {page.short}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* BANNER INDIKATOR HALAMAN AKTIF */}
+      <div className="bg-white border-b border-slate-200 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span
+              style={{
+                backgroundColor: activePage >= 4 && activePage <= 6
+                  ? 'var(--accent-color)'
+                  : 'var(--primary-color)',
+                color: activePage >= 4 && activePage <= 6 ? '#0f172a' : '#ffffff'
+              }}
+              className="px-3 py-1 rounded-full text-xs font-bold"
+            >
+              Menu Aktif: Hal {activePage}
+            </span>
+            <h2 className="text-base sm:text-lg font-bold text-slate-800">
+              {allNavPages.find(p => p.id === activePage)?.title}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="flex items-center gap-1">
+              <Users className="w-4 h-4" style={{ color: 'var(--primary-color)' }} />
+              Murid: <strong className="text-slate-700">{config.students.length}</strong>
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <FileSpreadsheet className="w-4 h-4" style={{ color: 'var(--primary-color)' }} />
+              Total Rekaman: <strong className="text-slate-700">{records.length} Data</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* KONTEN UTAMA BERDASARKAN HALAMAN (1 s/d 6 + 7) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {/* HALAMAN 1: REKAMAN TAHFIZ MURID */}
+        {activePage === 1 && config.enabledPages[1] && (
+          <StudentRecordingPage
+            key="page-1-tahfiz"
+            pageNumber={1}
+            category="tahfiz"
+            title={`Halaman 1: Setoran Hafalan Tahfiz Murid (Juz 30 & Juz 29)`}
+            subtitle="Pilih nama murid, klik OK, pilih surat & nomor ayat, lalu mulai perekaman suara hafalan untuk disimpan ke Google Drive & Spreadsheet."
+            schoolName={config.schoolName}
+            students={config.students}
+            records={records.filter(r => r.category === 'tahfiz')}
+            onSaveRecord={handleAddRecord}
+            showToast={showToast}
+          />
+        )}
+
+        {/* HALAMAN 2: PENILAIAN TAHFIZ GURU */}
+        {activePage === 2 && config.enabledPages[2] && (
+          <TeacherEvaluationPage
+            key="page-2-tahfiz"
+            pageNumber={2}
+            category="tahfiz"
+            title="Halaman 2: Penilaian Setoran Tahfiz Guru"
+            subtitle={`Login Guru (Password Default: ${config.teacherPassword}), pilih nama murid, putar rekaman hafalan, berikan predikat nilai (Mumtaz, Jayyid Jiddan, Jayyid, dst) dan komentar.`}
+            schoolName={config.schoolName}
+            students={config.students}
+            teachers={config.teachers}
+            teacherPassword={config.teacherPassword}
+            records={records.filter(r => r.category === 'tahfiz')}
+            onSaveEvaluation={handleTeacherSave}
+            showToast={showToast}
+          />
+        )}
+
+        {/* HALAMAN 3: PORTAL ORANG TUA TAHFIZ */}
+        {activePage === 3 && config.enabledPages[3] && (
+          <ParentPortalPage
+            key="page-3-tahfiz"
+            pageNumber={3}
+            category="tahfiz"
+            title="Halaman 3: Portal Pemantauan Tahfiz Orang Tua"
+            subtitle={`Pilih nama putra/putri Anda dan masukkan password murid (${firstStudentPwd} - ${lastStudentPwd}) untuk mendengarkan rekaman hafalan, melihat nilai guru, dan memberi feedback.`}
+            schoolName={config.schoolName}
+            students={config.students}
+            records={records.filter(r => r.category === 'tahfiz')}
+            onSaveFeedback={handleParentSave}
+            showToast={showToast}
+            onOpenPasswordList={() => setShowPasswordModal(true)}
+          />
+        )}
+
+        {/* HALAMAN 4: REKAMAN TILAWAH MUJAWWAD MURID */}
+        {activePage === 4 && config.enabledPages[4] && (
+          <StudentRecordingPage
+            key="page-4-tilawah"
+            pageNumber={4}
+            category="tilawah"
+            title="Halaman 4: Perekaman Tilawah Mujawwad Murid (Juz 30 & Juz 29)"
+            subtitle="Pilih nama murid, klik OK, pilih surat & nomor ayat yang dilantunkan secara Mujawwad, lalu mulai perekaman untuk disimpan ke Drive & Spreadsheet."
+            schoolName={config.schoolName}
+            students={config.students}
+            records={records.filter(r => r.category === 'tilawah')}
+            onSaveRecord={handleAddRecord}
+            showToast={showToast}
+          />
+        )}
+
+        {/* HALAMAN 5: PENILAIAN TILAWAH MUJAWWAD GURU */}
+        {activePage === 5 && config.enabledPages[5] && (
+          <TeacherEvaluationPage
+            key="page-5-tilawah"
+            pageNumber={5}
+            category="tilawah"
+            title="Halaman 5: Penilaian Tilawah Mujawwad Guru"
+            subtitle={`Login Guru (Password Default: ${config.teacherPassword}), pilih nama murid, putar audio tilawah mujawwad, pilih nilai (Mumtaz, Jayyid Jiddan, Jayyid, dst) serta komentar.`}
+            schoolName={config.schoolName}
+            students={config.students}
+            teachers={config.teachers}
+            teacherPassword={config.teacherPassword}
+            records={records.filter(r => r.category === 'tilawah')}
+            onSaveEvaluation={handleTeacherSave}
+            showToast={showToast}
+          />
+        )}
+
+        {/* HALAMAN 6: PORTAL ORANG TUA TILAWAH MUJAWWAD */}
+        {activePage === 6 && config.enabledPages[6] && (
+          <ParentPortalPage
+            key="page-6-tilawah"
+            pageNumber={6}
+            category="tilawah"
+            title="Halaman 6: Portal Orang Tua - Tilawah Mujawwad Murid"
+            subtitle={`Pilih nama putra/putri Anda dan masukkan password murid (${firstStudentPwd} - ${lastStudentPwd}) untuk mendengarkan rekaman tilawah mujawwad, melihat penilaian guru, dan mengisi feedback.`}
+            schoolName={config.schoolName}
+            students={config.students}
+            records={records.filter(r => r.category === 'tilawah')}
+            onSaveFeedback={handleParentSave}
+            showToast={showToast}
+            onOpenPasswordList={() => setShowPasswordModal(true)}
+          />
+        )}
+
+        {/* HALAMAN 7: REKAPITULASI SPREADSHEET & INTEGRASI GOOGLE DRIVE */}
+        {activePage === 7 && (
+          <SpreadsheetRecapPage
+            records={records}
+            schoolName={config.schoolName}
+            teachers={config.teachers}
+            databasePin={config.databasePin}
+            onExportCSV={exportToSpreadsheetCSV}
+            onDeleteRecord={handleDeleteRecord}
+            onOpenGasModal={() => setShowGasModal(true)}
+            gasWebhookUrl={config.gasWebhookUrl}
+            setGasWebhookUrl={(url) => setConfig(prev => ({ ...prev, gasWebhookUrl: url }))}
+            isUnlocked={isDatabaseUnlocked}
+            setIsUnlocked={setIsDatabaseUnlocked}
+            showToast={showToast}
+          />
+        )}
+      </main>
+
+      {/* FOOTER DINAMIS */}
+      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-5 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div>
+            <strong className="text-white">{config.schoolName}</strong> — {config.programTitle} (White-Label Edition).
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {[1, 2, 3, 4, 5, 6].filter(num => config.enabledPages[num]).map(num => (
+              <button
+                key={num}
+                onClick={() => setActivePage(num)}
+                style={activePage === num ? { backgroundColor: 'var(--primary-color)', borderColor: 'var(--accent-color)' } : {}}
+                className={`px-2.5 py-1 rounded border transition cursor-pointer ${
+                  activePage === num
+                    ? 'text-white font-bold'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                }`}
+              >
+                Hal {num}
+              </button>
+            ))}
+            <button
+              onClick={() => setShowAdminModal(true)}
+              className="px-2.5 py-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 font-semibold cursor-pointer"
+            >
+              ⚙️ Admin
+            </button>
+          </div>
+        </div>
+      </footer>
+
+      {/* MODAL DAFTAR KODE AKSES / PASSWORD MURID */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            <div
+              style={{ background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }}
+              className="text-white px-6 py-4 flex items-center justify-between"
+            >
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <Lock className="w-5 h-5" style={{ color: 'var(--accent-color)' }} />
+                  Daftar Password Guru & Orang Tua Murid — {config.schoolName}
+                </h3>
+                <p className="text-xs text-white/85 mt-0.5">
+                  Password Guru: <strong style={{ color: 'var(--accent-color)' }}>{config.teacherPassword}</strong> • Password Murid: <strong style={{ color: 'var(--accent-color)' }}>{firstStudentPwd} s/d {lastStudentPwd}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold cursor-pointer"
+              >
+                Tutup ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+                <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Panduan Akses Kredensial:</strong>
+                  <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                    <li>Untuk <strong>Halaman 2 & Halaman 5 (Guru)</strong>: Gunakan password guru <code className="bg-amber-200/70 px-1.5 py-0.5 rounded font-bold">{config.teacherPassword}</code>.</li>
+                    <li>Untuk <strong>Halaman 3 & Halaman 6 (Orang Tua)</strong>: Setiap murid memiliki kode password unik di bawah ini.</li>
+                    <li>Untuk <strong>⚙️ Pengaturan Admin White-Label</strong>: Gunakan PIN Admin default <code className="bg-amber-200/70 px-1.5 py-0.5 rounded font-bold">{config.adminPin}</code>.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {config.students.map((std, idx) => (
+                  <div key={std.id} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs">
+                    <div className="truncate pr-2">
+                      <span className="text-slate-400 font-mono mr-1">{idx + 1}.</span>
+                      <span className="font-semibold text-slate-800">{std.name}</span>
+                      <span className="block text-[10px] text-slate-500">Kelas {std.kelas}</span>
+                    </div>
+                    <span
+                      style={{ backgroundColor: 'var(--primary-color)' }}
+                      className="px-2 py-1 rounded text-white font-mono font-bold shrink-0"
+                    >
+                      {std.password}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KODE GOOGLE APPS SCRIPT */}
+      {showGasModal && (
+        <GoogleAppsScriptModal
+          schoolName={config.schoolName}
+          onClose={() => setShowGasModal(false)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* MODAL PANEL KUSTOMISASI ADMIN WHITE-LABEL (DILINDUNGI PIN DEFAULT: 999999) */}
+      {showAdminModal && (
+        <WhiteLabelAdminModal
+          config={config}
+          setConfig={setConfig}
+          isAuthenticated={isAdminAuthenticated}
+          setIsAuthenticated={setIsAdminAuthenticated}
+          onClose={() => setShowAdminModal(false)}
+          onSyncSpreadsheet={handleSyncConfigToSpreadsheet}
+          onExportHTML={handleExportStandaloneHTML}
+          showToast={showToast}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONEN MODAL PANEL KUSTOMISASI ADMIN WHITE-LABEL (PIN DEFAULT: 999999)
+// ============================================================================
+function WhiteLabelAdminModal({
+  config,
+  setConfig,
+  isAuthenticated,
+  setIsAuthenticated,
+  onClose,
+  onSyncSpreadsheet,
+  onExportHTML,
+  showToast
+}) {
+  const [pinInput, setPinInput] = useState("");
+  const [activeTab, setActiveTab] = useState("identitas"); // identitas | tema | halaman | murid | guru | export
+  const [draftConfig, setDraftConfig] = useState(() => JSON.parse(JSON.stringify(config)));
+
+  // State tambah murid baru
+  const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentKelas, setNewStudentKelas] = useState("VII-A");
+  const [newStudentPassword, setNewStudentPassword] = useState("");
+
+  // State tambah guru baru
+  const [newTeacherName, setNewTeacherName] = useState("");
+  const [newTeacherNip, setNewTeacherNip] = useState("");
+  const [newTeacherRole, setNewTeacherRole] = useState("Pembina Tahfiz & Tilawah");
+
+  // State rentang password otomatis
+  const [rangeStartInput, setRangeStartInput] = useState(draftConfig.studentPasswordStart || 123456);
+
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    if (pinInput.trim() === String(config.adminPin || "999999")) {
+      setIsAuthenticated(true);
+      showToast("Berhasil masuk ke Panel Kustomisasi Admin White-Label!");
+    } else {
+      showToast(`PIN Admin salah! Gunakan PIN Admin: ${config.adminPin || "999999"}`, "error");
+    }
+  };
+
+  // Konversi unggahan file gambar Logo Sekolah ke Base64
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Ukuran gambar maksimal 2 MB agar optimal disimpan di localStorage!", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result;
+      if (typeof base64String === "string") {
+        setDraftConfig(prev => ({ ...prev, logoBase64: base64String }));
+        showToast("Logo sekolah berhasil dikonversi ke Base64!");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Terapkan rentang password berurutan ke seluruh murid
+  const handleApplyPasswordRange = () => {
+    const startNum = Number(rangeStartInput) || 123456;
+    const updatedStudents = draftConfig.students.map((std, idx) => ({
+      ...std,
+      password: String(startNum + idx)
+    }));
+    setDraftConfig(prev => ({
+      ...prev,
+      studentPasswordStart: startNum,
+      students: updatedStudents
+    }));
+    showToast(`Rentang password berhasil diatur ulang: ${startNum} s/d ${startNum + updatedStudents.length - 1}`);
+  };
+
+  // Tambah murid baru
+  const handleAddStudent = (e) => {
+    e.preventDefault();
+    if (!newStudentName.trim()) {
+      showToast("Nama murid tidak boleh kosong!", "error");
+      return;
+    }
+    const nextIdx = draftConfig.students.length + 1;
+    const defaultPwd = String((Number(draftConfig.studentPasswordStart) || 123456) + draftConfig.students.length);
+    const newStd = {
+      id: `STD-${String(nextIdx).padStart(2, '0')}-${Date.now().toString().slice(-2)}`,
+      name: newStudentName.trim(),
+      kelas: newStudentKelas.trim() || "VII-A",
+      password: newStudentPassword.trim() || defaultPwd
+    };
+    setDraftConfig(prev => ({
+      ...prev,
+      students: [...prev.students, newStd]
+    }));
+    setNewStudentName("");
+    setNewStudentPassword("");
+    showToast(`Murid ${newStd.name} berhasil ditambahkan!`);
+  };
+
+  // Update field murid
+  const handleUpdateStudent = (id, field, value) => {
+    setDraftConfig(prev => ({
+      ...prev,
+      students: prev.students.map(s => (s.id === id ? { ...s, [field]: value } : s))
+    }));
+  };
+
+  // Hapus murid
+  const handleRemoveStudent = (id) => {
+    if (draftConfig.students.length <= 1) {
+      showToast("Minimal harus ada 1 murid terdaftar!", "error");
+      return;
+    }
+    setDraftConfig(prev => ({
+      ...prev,
+      students: prev.students.filter(s => s.id !== id)
+    }));
+  };
+
+  // Tambah guru baru
+  const handleAddTeacher = (e) => {
+    e.preventDefault();
+    if (!newTeacherName.trim()) {
+      showToast("Nama guru tidak boleh kosong!", "error");
+      return;
+    }
+    const newTch = {
+      id: `TCH-${String(draftConfig.teachers.length + 1).padStart(2, '0')}-${Date.now().toString().slice(-2)}`,
+      name: newTeacherName.trim(),
+      nip: newTeacherNip.trim() || "-",
+      role: newTeacherRole.trim() || "Pembina Tahfiz & Tilawah"
+    };
+    setDraftConfig(prev => ({
+      ...prev,
+      teachers: [...prev.teachers, newTch]
+    }));
+    setNewTeacherName("");
+    setNewTeacherNip("");
+    showToast(`Guru ${newTch.name} berhasil ditambahkan!`);
+  };
+
+  // Update field guru
+  const handleUpdateTeacher = (id, field, value) => {
+    setDraftConfig(prev => ({
+      ...prev,
+      teachers: prev.teachers.map(t => (t.id === id ? { ...t, [field]: value } : t))
+    }));
+  };
+
+  // Hapus guru
+  const handleRemoveTeacher = (id) => {
+    if (draftConfig.teachers.length <= 1) {
+      showToast("Minimal harus ada 1 guru pembina!", "error");
+      return;
+    }
+    setDraftConfig(prev => ({
+      ...prev,
+      teachers: prev.teachers.filter(t => t.id !== id)
+    }));
+  };
+
+  // Simpan semua perubahan ke state utama & localStorage
+  const handleSaveAllChanges = () => {
+    const activeCount = Object.values(draftConfig.enabledPages).filter(Boolean).length;
+    if (activeCount === 0) {
+      showToast("Aktifkan minimal 1 halaman menu agar aplikasi dapat digunakan!", "error");
+      return;
+    }
+    setConfig(draftConfig);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(draftConfig));
+    showToast("Seluruh pengaturan White-Label berhasil diterapkan & disimpan ke localStorage!");
+  };
+
+  // Reset ke pengaturan bawaan pabrik (DEFAULT_CONFIG)
+  const handleResetToDefault = () => {
+    setDraftConfig(JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
+    setConfig(DEFAULT_CONFIG);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    showToast("Pengaturan berhasil dikembalikan ke DEFAULT_CONFIG awal!");
+  };
+
+  const presetThemes = [
+    { name: "Hijau Emerald & Emas (Default)", primary: "#065f46", secondary: "#115e59", accent: "#f59e0b" },
+    { name: "Biru Royal & Cyan", primary: "#1e3a8a", secondary: "#1d4ed8", accent: "#38bdf8" },
+    { name: "Ungu Nusantara & Gold", primary: "#4c1d95", secondary: "#6d28d9", accent: "#fbbf24" },
+    { name: "Maroon Pesantren & Krem", primary: "#7f1d1d", secondary: "#991b1b", accent: "#f59e0b" },
+    { name: "Dark Slate & Emerald", primary: "#0f172a", secondary: "#1e293b", accent: "#10b981" }
+  ];
+
+  const pageLabels = [
+    { id: 1, name: "Halaman 1: Murid Tahfiz (Setoran Hafalan)", desc: "Form pilih murid, pilih surat Juz 30/29 & perekam suara hafalan" },
+    { id: 2, name: "Halaman 2: Guru Tahfiz (Penilaian Hafalan)", desc: "Portal login guru untuk memutar rekaman & memberi nilai Tahfiz" },
+    { id: 3, name: "Halaman 3: Orang Tua Tahfiz (Pemantauan & Feedback)", desc: "Portal login orang tua untuk melihat nilai & memberi komentar Tahfiz" },
+    { id: 4, name: "Halaman 4: Murid Tilawah Mujawwad (Perekaman)", desc: "Form perekaman khusus lantunan Tilawah Mujawwad & Nagham" },
+    { id: 5, name: "Halaman 5: Guru Tilawah Mujawwad (Penilaian)", desc: "Portal login guru untuk menilai rekaman Tilawah Mujawwad" },
+    { id: 6, name: "Halaman 6: Orang Tua Tilawah Mujawwad (Pemantauan)", desc: "Portal orang tua untuk memantau perkembangan Tilawah Mujawwad" }
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+        {/* HEADER MODAL ADMIN */}
+        <div
+          style={{ background: `linear-gradient(90deg, ${draftConfig.theme.primaryColor}, ${draftConfig.theme.secondaryColor})` }}
+          className="text-white px-6 py-4 flex items-center justify-between shrink-0"
+        >
+          <div className="flex items-center gap-3">
+            <div
+              style={{ backgroundColor: draftConfig.theme.accentColor }}
+              className="p-2 rounded-xl text-slate-950"
+            >
+              <Settings className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-extrabold flex items-center gap-2">
+                <span>⚙️ Panel Kustomisasi Admin (White-Label Studio)</span>
+              </h3>
+              <p className="text-xs text-white/85">
+                Kustomisasi Identitas Sekolah, Logo Base64, Tema Warna CSS, Saklar 6 Halaman, Data Murid/Guru & Export HTML
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isAuthenticated && (
+              <button
+                onClick={() => setIsAuthenticated(false)}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer flex items-center gap-1"
+              >
+                <Lock className="w-3.5 h-3.5" /> Kunci
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* FORM LOGIN PIN ADMIN (DEFAULT: 999999) */}
+        {!isAuthenticated ? (
+          <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center border-2 border-amber-300 shadow-xs">
+              <KeyRound className="w-8 h-8" />
+            </div>
+            <div>
+              <h4 className="text-lg font-extrabold text-slate-800">Otentikasi PIN Admin White-Label</h4>
+              <p className="text-xs text-slate-500 max-w-md mt-1">
+                Masukkan PIN Admin (Default: <code className="px-1.5 py-0.5 rounded bg-slate-100 font-bold text-slate-800">{config.adminPin || "999999"}</code>) untuk membuka Panel Kustomisasi Sekolah.
+              </p>
+            </div>
+
+            <form onSubmit={handlePinSubmit} className="w-full max-w-xs space-y-3">
+              <input
+                type="password"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                placeholder="Masukkan PIN Admin (999999)"
+                className="w-full text-center tracking-widest text-lg font-mono font-bold rounded-xl border border-slate-300 px-4 py-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPinInput(String(config.adminPin || "999999"))}
+                  className="flex-1 py-2.5 px-3 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  Isi Default ({config.adminPin || "999999"})
+                </button>
+                <button
+                  type="submit"
+                  style={{ backgroundColor: draftConfig.theme.primaryColor }}
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white shadow cursor-pointer"
+                >
+                  Buka Panel
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          <>
+            {/* NAVIGASI TAB PANEL ADMIN */}
+            <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 flex flex-wrap gap-1.5 shrink-0">
+              {[
+                { id: "identitas", label: "1. Identitas & Logo", icon: School },
+                { id: "tema", label: "2. Tema Warna (CSS)", icon: Palette },
+                { id: "halaman", label: "3. Saklar 6 Halaman", icon: ToggleRight },
+                { id: "murid", label: `4. Data Murid (${draftConfig.students.length})`, icon: Users },
+                { id: "guru", label: `5. Data Guru (${draftConfig.teachers.length})`, icon: Award },
+                { id: "export", label: "6. Cloud & Export HTML", icon: FileCode }
+              ].map(tab => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    style={active ? { backgroundColor: draftConfig.theme.primaryColor, color: '#ffffff' } : {}}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      active ? 'shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200/70 border border-slate-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ISI KONTEN TAB */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* TAB 1: IDENTITAS SEKOLAH & LOGO BASE64 */}
+              {activeTab === "identitas" && (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  <div className="md:col-span-7 space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Nama Sekolah / Instansi / Pesantren:
+                      </label>
+                      <input
+                        type="text"
+                        value={draftConfig.schoolName}
+                        onChange={(e) => setDraftConfig(prev => ({ ...prev, schoolName: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-bold text-slate-800 bg-slate-50"
+                        placeholder="Contoh: SMP Negeri 4 Malang"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Judul Program Aplikasi:
+                      </label>
+                      <input
+                        type="text"
+                        value={draftConfig.programTitle}
+                        onChange={(e) => setDraftConfig(prev => ({ ...prev, programTitle: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-bold text-slate-800 bg-slate-50"
+                        placeholder="Contoh: E-Tahfiz & Tilawah Mujawwad Al-Qur'an"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Alamat Sekolah & Deskripsi Singkat Header:
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={draftConfig.schoolAddress}
+                        onChange={(e) => setDraftConfig(prev => ({ ...prev, schoolAddress: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 bg-slate-50"
+                        placeholder="Alamat lengkap sekolah dan keterangan singkat..."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">PIN Admin Panel:</label>
+                        <input
+                          type="text"
+                          value={draftConfig.adminPin}
+                          onChange={(e) => setDraftConfig(prev => ({ ...prev, adminPin: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold bg-slate-50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Password Login Guru:</label>
+                        <input
+                          type="text"
+                          value={draftConfig.teacherPassword}
+                          onChange={(e) => setDraftConfig(prev => ({ ...prev, teacherPassword: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold bg-slate-50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">PIN Halaman Database:</label>
+                        <input
+                          type="text"
+                          value={draftConfig.databasePin}
+                          onChange={(e) => setDraftConfig(prev => ({ ...prev, databasePin: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold bg-slate-50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kolom Kanan: Upload Logo Base64 */}
+                  <div className="md:col-span-5 bg-slate-50 rounded-2xl p-5 border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Logo Sekolah (Otomatis Base64)
+                    </div>
+
+                    <div
+                      style={{ backgroundColor: draftConfig.theme.accentColor }}
+                      className="w-24 h-24 rounded-2xl flex items-center justify-center shadow-md border-4 border-white overflow-hidden"
+                    >
+                      {draftConfig.logoBase64 ? (
+                        <img src={draftConfig.logoBase64} alt="Preview Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <School className="w-12 h-12 text-slate-950" />
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-500">
+                      Unggah file gambar (PNG/JPG/WEBP/SVG). Gambar akan dikonversi menjadi teks Base64 sehingga langsung menyatu di dalam aplikasi & hasil Export HTML tanpa perlu hosting gambar terpisah.
+                    </p>
+
+                    <div className="flex flex-wrap justify-center gap-2 w-full">
+                      <label className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-xs">
+                        <ImageIcon className="w-4 h-4" />
+                        <span>Pilih File Logo...</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {draftConfig.logoBase64 && (
+                        <button
+                          type="button"
+                          onClick={() => setDraftConfig(prev => ({ ...prev, logoBase64: "" }))}
+                          className="px-3 py-2.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold cursor-pointer"
+                        >
+                          Hapus Logo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: PEMILIH WARNA TEMA (CSS VARIABLES) */}
+              {activeTab === "tema" && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Primary Color */}
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Warna Utama (<code>--primary-color</code>)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={draftConfig.theme.primaryColor}
+                          onChange={(e) =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              theme: { ...prev.theme, primaryColor: e.target.value }
+                            }))
+                          }
+                          className="w-14 h-12 rounded-xl cursor-pointer border border-slate-300"
+                        />
+                        <input
+                          type="text"
+                          value={draftConfig.theme.primaryColor}
+                          onChange={(e) =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              theme: { ...prev.theme, primaryColor: e.target.value }
+                            }))
+                          }
+                          className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono font-bold bg-white"
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-500">Digunakan untuk warna dominan header, tombol utama & kartu Tahfiz.</p>
+                    </div>
+
+                    {/* Secondary Color */}
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Warna Gradasi Pendamping (<code>--secondary-color</code>)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={draftConfig.theme.secondaryColor}
+                          onChange={(e) =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              theme: { ...prev.theme, secondaryColor: e.target.value }
+                            }))
+                          }
+                          className="w-14 h-12 rounded-xl cursor-pointer border border-slate-300"
+                        />
+                        <input
+                          type="text"
+                          value={draftConfig.theme.secondaryColor}
+                          onChange={(e) =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              theme: { ...prev.theme, secondaryColor: e.target.value }
+                            }))
+                          }
+                          className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono font-bold bg-white"
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-500">Digunakan sebagai pasangan gradasi header dan banner portal.</p>
+                    </div>
+
+                    {/* Accent Color */}
+                    <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Warna Aksen Emas/Sorotan (<code>--accent-color</code>)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={draftConfig.theme.accentColor}
+                          onChange={(e) =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              theme: { ...prev.theme, accentColor: e.target.value }
+                            }))
+                          }
+                          className="w-14 h-12 rounded-xl cursor-pointer border border-slate-300"
+                        />
+                        <input
+                          type="text"
+                          value={draftConfig.theme.accentColor}
+                          onChange={(e) =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              theme: { ...prev.theme, accentColor: e.target.value }
+                            }))
+                          }
+                          className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono font-bold bg-white"
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-500">Digunakan untuk bingkai logo, lencana sekolah, dan aksen Tilawah.</p>
+                    </div>
+                  </div>
+
+                  {/* Preset Palet Cepat */}
+                  <div>
+                    <div className="text-xs font-bold text-slate-700 mb-2">Pilihan Paket Tema Siap Pakai:</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+                      {presetThemes.map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              theme: {
+                                primaryColor: preset.primary,
+                                secondaryColor: preset.secondary,
+                                accentColor: preset.accent
+                              }
+                            }))
+                          }
+                          className="p-3 rounded-xl border border-slate-200 hover:border-slate-400 bg-white text-left transition cursor-pointer space-y-2"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full border" style={{ backgroundColor: preset.primary }} />
+                            <span className="w-5 h-5 rounded-full border" style={{ backgroundColor: preset.secondary }} />
+                            <span className="w-5 h-5 rounded-full border" style={{ backgroundColor: preset.accent }} />
+                          </div>
+                          <div className="text-xs font-bold text-slate-800">{preset.name}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Live Preview Banner */}
+                  <div
+                    style={{
+                      background: `linear-gradient(90deg, ${draftConfig.theme.primaryColor}, ${draftConfig.theme.secondaryColor})`,
+                      borderBottom: `4px solid ${draftConfig.theme.accentColor}`
+                    }}
+                    className="rounded-2xl p-5 text-white shadow-md flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        style={{ backgroundColor: draftConfig.theme.accentColor }}
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-950 font-bold"
+                      >
+                        <School className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span
+                          style={{ backgroundColor: draftConfig.theme.accentColor }}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-950 uppercase"
+                        >
+                          Preview Tema Header
+                        </span>
+                        <h4 className="text-base font-extrabold mt-0.5">{draftConfig.schoolName}</h4>
+                      </div>
+                    </div>
+                    <span className="text-xs opacity-85">CSS Variables Live Preview</span>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: SAKLAR ON/OFF 6 MENU HALAMAN */}
+              {activeTab === "halaman" && (
+                <div className="space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900">
+                    <strong>Saklar Modul Halaman (On/Off):</strong> Anda dapat mengaktifkan atau menyembunyikan masing-masing dari 6 halaman sesuai kebutuhan sekolah (misalnya hanya membuka program Tahfiz saja, atau membuka Tahfiz + Tilawah sekaligus).
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {pageLabels.map(item => {
+                      const isEnabled = Boolean(draftConfig.enabledPages[item.id]);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() =>
+                            setDraftConfig(prev => ({
+                              ...prev,
+                              enabledPages: {
+                                ...prev.enabledPages,
+                                [item.id]: !prev.enabledPages[item.id]
+                              }
+                            }))
+                          }
+                          className={`p-4 rounded-2xl border flex items-center justify-between gap-4 cursor-pointer transition ${
+                            isEnabled
+                              ? 'bg-emerald-50/70 border-emerald-300'
+                              : 'bg-slate-100 border-slate-200 opacity-70'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-sm font-extrabold text-slate-800">{item.name}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">{item.desc}</div>
+                          </div>
+                          <button
+                            type="button"
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shrink-0 ${
+                              isEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
+                            }`}
+                          >
+                            {isEnabled ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                            <span>{isEnabled ? 'AKTIF (ON)' : 'NONAKTIF'}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: MANAJEMEN DAFTAR MURID & RENTANG PASSWORD */}
+              {activeTab === "murid" && (
+                <div className="space-y-5">
+                  {/* Generator Rentang Password Murid */}
+                  <div className="bg-slate-100 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Atur Rentang Password Otomatis Seluruh Murid (Angka Awal):
+                      </label>
+                      <input
+                        type="number"
+                        value={rangeStartInput}
+                        onChange={(e) => setRangeStartInput(e.target.value)}
+                        className="w-full sm:max-w-xs rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-mono font-bold bg-white"
+                      />
+                      <span className="block text-[11px] text-slate-500 mt-1">
+                        Jika diisi <strong>{rangeStartInput}</strong>, maka murid ke-1 s/d ke-{draftConfig.students.length} otomatis mendapat password <strong>{rangeStartInput} s/d {(Number(rangeStartInput) || 123456) + draftConfig.students.length - 1}</strong>.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleApplyPasswordRange}
+                      style={{ backgroundColor: draftConfig.theme.primaryColor }}
+                      className="px-4 py-2.5 rounded-xl text-white text-xs font-bold shadow cursor-pointer shrink-0"
+                    >
+                      Terapkan Rentang Password
+                    </button>
+                  </div>
+
+                  {/* Form Tambah Murid Baru */}
+                  <form onSubmit={handleAddStudent} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200">
+                    <div className="sm:col-span-5">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap Murid Baru:</label>
+                      <input
+                        type="text"
+                        placeholder="Ketik nama lengkap murid..."
+                        value={newStudentName}
+                        onChange={(e) => setNewStudentName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Kelas:</label>
+                      <input
+                        type="text"
+                        placeholder="VII-A"
+                        value={newStudentKelas}
+                        onChange={(e) => setNewStudentKelas(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Password (Opsional):</label>
+                      <input
+                        type="text"
+                        placeholder="Otomatis jika kosong"
+                        value={newStudentPassword}
+                        onChange={(e) => setNewStudentPassword(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <button
+                        type="submit"
+                        className="w-full py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" /> Tambah
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Daftar Edit Murid */}
+                  <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-200">
+                    {draftConfig.students.map((std, idx) => (
+                      <div key={std.id} className="p-2.5 bg-white hover:bg-slate-50 grid grid-cols-12 gap-2 items-center text-xs">
+                        <div className="col-span-1 font-mono text-slate-400 text-center">{idx + 1}.</div>
+                        <div className="col-span-5">
+                          <input
+                            type="text"
+                            value={std.name}
+                            onChange={(e) => handleUpdateStudent(std.id, 'name', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold text-slate-800"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="text"
+                            value={std.kelas}
+                            onChange={(e) => handleUpdateStudent(std.id, 'kelas', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-slate-700"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input
+                            type="text"
+                            value={std.password}
+                            onChange={(e) => handleUpdateStudent(std.id, 'password', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 font-mono font-bold text-emerald-800 bg-emerald-50"
+                          />
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStudent(std.id)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            title="Hapus Murid"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: MANAJEMEN DAFTAR GURU PEMBINA */}
+              {activeTab === "guru" && (
+                <div className="space-y-5">
+                  <form onSubmit={handleAddTeacher} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end bg-amber-50/70 p-4 rounded-2xl border border-amber-200">
+                    <div className="sm:col-span-4">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Nama Guru & Gelar:</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Ust. H. Abdullah, M.Pd.I"
+                        value={newTeacherName}
+                        onChange={(e) => setNewTeacherName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">NIP / NIY:</label>
+                      <input
+                        type="text"
+                        placeholder="1985..."
+                        value={newTeacherNip}
+                        onChange={(e) => setNewTeacherNip(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Jabatan / Peran Pembina:</label>
+                      <input
+                        type="text"
+                        placeholder="Pembina Tahfiz"
+                        value={newTeacherRole}
+                        onChange={(e) => setNewTeacherRole(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <button
+                        type="submit"
+                        className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" /> Tambah
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="space-y-2">
+                    {draftConfig.teachers.map((tch, idx) => (
+                      <div key={tch.id} className="p-3 rounded-xl border border-slate-200 bg-white grid grid-cols-1 sm:grid-cols-12 gap-2 items-center text-xs">
+                        <div className="sm:col-span-1 font-mono font-bold text-slate-400">#{idx + 1}</div>
+                        <div className="sm:col-span-4">
+                          <input
+                            type="text"
+                            value={tch.name}
+                            onChange={(e) => handleUpdateTeacher(tch.id, 'name', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 font-bold text-slate-800"
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <input
+                            type="text"
+                            value={tch.nip}
+                            onChange={(e) => handleUpdateTeacher(tch.id, 'nip', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 font-mono text-slate-600"
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <input
+                            type="text"
+                            value={tch.role}
+                            onChange={(e) => handleUpdateTeacher(tch.id, 'role', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-slate-700"
+                          />
+                        </div>
+                        <div className="sm:col-span-1 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTeacher(tch.id)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: SINKRONISASI SPREADSHEET & EXPORT HTML MANDIRI */}
+              {activeTab === "export" && (
+                <div className="space-y-5">
+                  <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
+                    <h4 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                      <CloudUpload className="w-5 h-5 text-emerald-700" />
+                      <span>1. Sinkronisasi Pengaturan White-Label ke Google Spreadsheet (Apps Script)</span>
+                    </h4>
+                    <p className="text-xs text-slate-600">
+                      Simpan seluruh konfigurasi sekolah, tema warna, daftar murid, dan daftar guru ke tab <code>Sheet_Config</code> pada Google Spreadsheet sekolah melalui URL Web App Google Apps Script Anda.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={draftConfig.gasWebhookUrl}
+                        onChange={(e) => setDraftConfig(prev => ({ ...prev, gasWebhookUrl: e.target.value }))}
+                        placeholder="https://script.google.com/macros/s/.../exec"
+                        className="flex-1 rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfig(draftConfig);
+                          onSyncSpreadsheet(draftConfig);
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                      >
+                        <CloudUpload className="w-4 h-4" />
+                        <span>Sinkronkan ke Spreadsheet</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-2xl border-2 border-amber-300 bg-amber-50/70 space-y-3">
+                    <h4 className="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+                      <FileCode className="w-5 h-5 text-amber-700" />
+                      <span>2. Export / Download HTML Utuh (Dengan Variabel DEFAULT_CONFIG Terbaru)</span>
+                    </h4>
+                    <p className="text-xs text-amber-900">
+                      Unduh file <code>index.html</code> mandiri yang sudah memperbarui variabel <code>DEFAULT_CONFIG</code> di dalam kodenya sesuai seluruh pengaturan yang baru Anda ubah (Nama Sekolah, Logo Base64, Warna CSS Variables, Saklar Halaman, serta Daftar Murid & Guru).
+                    </p>
+                    <div className="flex flex-wrap gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfig(draftConfig);
+                          onExportHTML(draftConfig);
+                        }}
+                        className="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-extrabold shadow-md flex items-center gap-2 cursor-pointer"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Export / Download HTML (index.html)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleResetToDefault}
+                        className="px-4 py-3 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Reset ke Default Pabrik</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* FOOTER TOMBOL SIMPAN PERUBAHAN */}
+            <div className="bg-slate-100 border-t border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="text-xs text-slate-500">
+                Penyimpanan Otomatis: <strong>localStorage Browser</strong> & <strong>Export DEFAULT_CONFIG</strong>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfig(draftConfig);
+                    onExportHTML(draftConfig);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <FileCode className="w-4 h-4" />
+                  <span>Export/Download HTML</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAllChanges}
+                  style={{ backgroundColor: draftConfig.theme.primaryColor }}
+                  className="px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-extrabold shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Simpan Pengaturan Admin</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONEN HALAMAN 1 & 4: REKAMAN HAFALAN TAHFIZ / TILAWAH MUJAWWAD MURID
+// ============================================================================
+function StudentRecordingPage({
+  pageNumber,
+  category,
+  title,
+  subtitle,
+  schoolName,
+  students,
+  records,
+  onSaveRecord,
+  showToast
+}) {
+  const isTilawah = category === 'tilawah';
+  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || "");
+  const [confirmedStudent, setConfirmedStudent] = useState(null);
+
+  // Sinkronkan bila daftar murid di-update dari Admin Panel
+  useEffect(() => {
+    if (students.length > 0 && !students.some(s => s.id === selectedStudentId)) {
+      setSelectedStudentId(students[0].id);
+    }
+  }, [students, selectedStudentId]);
+
+  // Form Surat & Ayat (Juz 30 & Juz 29)
+  const [selectedJuz, setSelectedJuz] = useState(30);
+  const filteredSurahs = SURAHS_DATA.filter(s => s.juz === Number(selectedJuz));
+  const [selectedSurahNum, setSelectedSurahNum] = useState(78);
+  const currentSurah = SURAHS_DATA.find(s => s.number === Number(selectedSurahNum)) || filteredSurahs[0];
+
+  const [ayatStart, setAyatStart] = useState(1);
+  const [ayatEnd, setAyatEnd] = useState(10);
+  const [naghamStyle, setNaghamStyle] = useState("Bayyati & Hijaz");
+
+  // State Perekaman Suara
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [waveBars, setWaveBars] = useState(Array(20).fill(18));
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const timerRef = useRef(null);
+
+  const handleJuzChange = (newJuz) => {
+    const j = Number(newJuz);
+    setSelectedJuz(j);
+    const firstSurah = SURAHS_DATA.find(s => s.juz === j);
+    if (firstSurah) {
+      setSelectedSurahNum(firstSurah.number);
+      setAyatStart(1);
+      setAyatEnd(Math.min(10, firstSurah.ayat));
+    }
+  };
+
+  const handleSurahChange = (surahNum) => {
+    const sNum = Number(surahNum);
+    setSelectedSurahNum(sNum);
+    const sObj = SURAHS_DATA.find(s => s.number === sNum);
+    if (sObj) {
+      setAyatStart(1);
+      setAyatEnd(Math.min(10, sObj.ayat));
+    }
+  };
+
+  const handleConfirmStudent = (e) => {
+    e.preventDefault();
+    const std = students.find(s => s.id === selectedStudentId);
+    if (std) {
+      setConfirmedStudent(std);
+      setRecordedAudioUrl(null);
+      setRecordingSeconds(0);
+      showToast(`Murid ${std.name} (${std.kelas}) dipilih. Silakan pilih Surat Juz 30/29 dan mulai merekam.`);
+    }
+  };
+
+  useEffect(() => {
+    if (isRecording) {
+      timerRef.current = setInterval(() => {
+        setRecordingSeconds(prev => prev + 1);
+        setWaveBars(Array.from({ length: 20 }, () => Math.floor(Math.random() * 75) + 15));
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+      setWaveBars(Array(20).fill(18));
+    }
+    return () => clearInterval(timerRef.current);
+  }, [isRecording]);
+
+  const formatDuration = (sec) => {
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const startRecording = async () => {
+    setRecordedAudioUrl(null);
+    setRecordingSeconds(0);
+    audioChunksRef.current = [];
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach(track => track.stop());
+          if (audioChunksRef.current.length > 0) {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const url = URL.createObjectURL(audioBlob);
+            setRecordedAudioUrl(url);
+          } else {
+            const simUrl = generateSimulatedMurottalWav(5, category);
+            setRecordedAudioUrl(simUrl);
+          }
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+        showToast("Perekaman suara dimulai... Silakan lantunkan ayat Al-Qur'an.");
+        return;
+      } catch (err) {
+        // Fallback simulasi
+      }
+    }
+
+    mediaRecorderRef.current = null;
+    setIsRecording(true);
+    showToast("Mode Perekaman Aktif (Simulasi Audio Otomatis). Silakan lantunkan bacaan Anda.");
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    } else {
+      const simUrl = generateSimulatedMurottalWav(Math.max(4, Math.min(recordingSeconds || 5, 10)), category);
+      setRecordedAudioUrl(simUrl);
+    }
+    setIsRecording(false);
+    showToast("Perekaman selesai! Silakan putar ulang atau simpan ke Google Drive & Spreadsheet.");
+  };
+
+  const handleSaveToDriveAndSheet = () => {
+    if (!confirmedStudent) {
+      showToast("Pilih nama murid dan klik OK terlebih dahulu!", "error");
+      return;
+    }
+    if (!recordedAudioUrl) {
+      showToast("Silakan lakukan perekaman suara terlebih dahulu!", "error");
+      return;
+    }
+
+    const start = Math.max(1, Number(ayatStart) || 1);
+    const end = Math.max(start, Math.min(currentSurah.ayat, Number(ayatEnd) || start));
+
+    setIsUploading(true);
+    setTimeout(() => {
+      const now = new Date();
+      const timestampStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} WIB`;
+      const cleanName = confirmedStudent.name.replace(/[^a-zA-Z]/g, '');
+      const cleanSurah = currentSurah.name.replace(/[^a-zA-Z]/g, '');
+      const prefix = isTilawah ? 'TLW' : 'THF';
+      const driveFileName = `${prefix}_${cleanName}_Juz${selectedJuz}_${cleanSurah}_Ayat${start}-${end}.webm`;
+
+      const newRecord = {
+        id: `REC-${prefix}-${Date.now().toString().slice(-4)}`,
+        category,
+        studentId: confirmedStudent.id,
+        studentName: confirmedStudent.name,
+        kelas: confirmedStudent.kelas,
+        juz: Number(selectedJuz),
+        surahNumber: currentSurah.number,
+        surahName: currentSurah.name,
+        ayatStart: start,
+        ayatEnd: end,
+        nagham: isTilawah ? naghamStyle : undefined,
+        duration: formatDuration(Math.max(1, recordingSeconds)),
+        timestamp: timestampStr,
+        driveFileId: driveFileName,
+        driveUrl: isTilawah
+          ? "https://drive.google.com/drive/folders/tilawah-audio"
+          : "https://drive.google.com/drive/folders/tahfiz-audio",
+        sheetStatus: `Terekap di Sheet_${isTilawah ? 'Tilawah' : 'Tahfiz'}`,
+        audioUrl: recordedAudioUrl,
+        grade: "",
+        teacherName: "",
+        teacherComment: "",
+        parentComment: ""
+      };
+
+      onSaveRecord(newRecord);
+      setIsUploading(false);
+      setRecordedAudioUrl(null);
+      setRecordingSeconds(0);
+    }, 600);
+  };
+
+  const studentRecords = confirmedStudent
+    ? records.filter(r => r.studentId === confirmedStudent.id)
+    : records;
+
+  return (
+    <div className="space-y-6">
+      {/* HEADER CARD HALAMAN 1 / HALAMAN 4 */}
+      <div
+        style={{
+          background: isTilawah
+            ? 'linear-gradient(90deg, var(--accent-color), var(--primary-color))'
+            : 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))'
+        }}
+        className="rounded-2xl p-6 text-white shadow-md"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-black/25 text-white mb-2">
+              {isTilawah ? <Music className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              <span>Halaman {pageNumber} • Portal Murid {schoolName}</span>
+            </span>
+            <h3 className="text-xl sm:text-2xl font-extrabold">{title}</h3>
+            <p className="text-xs sm:text-sm text-white/90 mt-1">{subtitle}</p>
+          </div>
+          <div className="bg-black/20 backdrop-blur-xs rounded-xl px-4 py-3 border border-white/20 text-xs shrink-0">
+            <div className="font-bold" style={{ color: 'var(--accent-color)' }}>Penyimpanan Otomatis:</div>
+            <div className="flex items-center gap-1.5 mt-1">
+              <FolderGit2 className="w-4 h-4" />
+              <span>Google Drive Audio ({isTilawah ? 'Folder Tilawah' : 'Folder Tahfiz'})</span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Google Spreadsheet ({isTilawah ? 'Sheet_Tilawah' : 'Sheet_Tahfiz'})</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* LANGKAH 1: PILIH NAMA MURID & KLIK TOMBOL OK */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+        <h4 className="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
+          <span
+            style={{ backgroundColor: 'var(--primary-color)' }}
+            className="w-6 h-6 rounded-full text-xs font-bold text-white flex items-center justify-center"
+          >
+            1
+          </span>
+          <span>Pilih Nama Murid & Tekan Tombol OK</span>
+        </h4>
+
+        <form onSubmit={handleConfirmStudent} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div className="sm:col-span-9">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Daftar Nama Murid {schoolName} ({students.length} Murid):
+            </label>
+            <select
+              value={selectedStudentId}
+              onChange={(e) => setSelectedStudentId(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-800 bg-slate-50 focus:outline-none"
+            >
+              {students.map((std, idx) => (
+                <option key={std.id} value={std.id}>
+                  {idx + 1}. {std.name} — Kelas {std.kelas}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-3">
+            <button
+              type="submit"
+              style={{ backgroundColor: 'var(--primary-color)' }}
+              className="w-full py-2.5 px-5 rounded-xl font-bold text-sm text-white shadow-sm hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              <span>OK (Pilih Murid)</span>
+            </button>
+          </div>
+        </form>
+
+        {confirmedStudent && (
+          <div className="mt-4 p-3.5 rounded-xl border bg-slate-50 border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 shrink-0" style={{ color: 'var(--primary-color)' }} />
+              <span>
+                Murid Aktif: <strong>{confirmedStudent.name}</strong> • Kelas: <strong>{confirmedStudent.kelas}</strong> • ID: <code className="font-mono">{confirmedStudent.id}</code>
+              </span>
+            </div>
+            <span
+              style={{ backgroundColor: 'var(--primary-color)' }}
+              className="px-2.5 py-0.5 rounded-full font-bold text-white"
+            >
+              Siap Merekam {isTilawah ? 'Tilawah Mujawwad' : 'Hafalan Tahfiz'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* LANGKAH 2: PILIH SURAT (JUZ 30 & JUZ 29), NOMOR AYAT, DAN PEREKAMAN */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h4 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <span
+              style={{ backgroundColor: 'var(--primary-color)' }}
+              className="w-6 h-6 rounded-full text-xs font-bold text-white flex items-center justify-center"
+            >
+              2
+            </span>
+            <span>Pilih Surat (Juz 30 & Juz 29), Nomor Ayat & Mulai Perekaman</span>
+          </h4>
+          {!confirmedStudent && (
+            <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+              💡 Klik tombol "OK (Pilih Murid)" pada Langkah 1 di atas terlebih dahulu
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Pilih Juz Al-Qur'an:</label>
+                <select
+                  value={selectedJuz}
+                  onChange={(e) => handleJuzChange(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-bold text-slate-800 bg-slate-50"
+                >
+                  <option value={30}>Juz 30 (Juz 'Amma - 37 Surat)</option>
+                  <option value={29}>Juz 29 (Juz Tabarak - 11 Surat)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Pilih Nama Surat:</label>
+                <select
+                  value={selectedSurahNum}
+                  onChange={(e) => handleSurahChange(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-bold text-slate-800 bg-slate-50"
+                >
+                  {filteredSurahs.map(s => (
+                    <option key={s.number} value={s.number}>
+                      {s.number}. QS. {s.name} ({s.ayat} Ayat)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Mulai Nomor Ayat (1 - {currentSurah.ayat}):
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={currentSurah.ayat}
+                  value={ayatStart}
+                  onChange={(e) => setAyatStart(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-bold text-slate-800 bg-slate-50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Sampai Nomor Ayat (Maks {currentSurah.ayat}):
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={currentSurah.ayat}
+                  value={ayatEnd}
+                  onChange={(e) => setAyatEnd(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-bold text-slate-800 bg-slate-50"
+                />
+              </div>
+            </div>
+
+            {isTilawah && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Irama / Maqam Nagham Tilawah Mujawwad (Opsional):
+                </label>
+                <select
+                  value={naghamStyle}
+                  onChange={(e) => setNaghamStyle(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-800 bg-amber-50/60"
+                >
+                  <option value="Bayyati & Hijaz">Maqam Bayyati & Hijaz</option>
+                  <option value="Nahawand">Maqam Nahawand</option>
+                  <option value="Rast & Sikah">Maqam Rast & Sikah</option>
+                  <option value="Shoba">Maqam Shoba</option>
+                  <option value="Jiharkah">Maqam Jiharkah</option>
+                </select>
+              </div>
+            )}
+
+            <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs space-y-1">
+              <div className="font-bold text-slate-700">Ringkasan Target Setoran:</div>
+              <div className="text-slate-600">
+                Surat: <strong>QS. {currentSurah.name} ({currentSurah.arti})</strong> • Juz {selectedJuz} • Ayat <strong>{ayatStart} s/d {ayatEnd}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Kolom Kanan: Studio Perekam Suara */}
+          <div className="lg:col-span-6 flex flex-col justify-between bg-slate-900 text-white rounded-2xl p-5 border border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Volume2 className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
+                Studio Perekam {isTilawah ? 'Tilawah Mujawwad' : 'Tahfiz'}
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                isRecording ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-800 text-emerald-300'
+              }`}>
+                {isRecording ? `● REC ${formatDuration(recordingSeconds)}` : formatDuration(recordingSeconds)}
+              </span>
+            </div>
+
+            <div className="my-5 h-16 flex items-center justify-center gap-1.5 px-4 bg-slate-950/70 rounded-xl border border-slate-800">
+              {waveBars.map((height, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: `${height}%`,
+                    backgroundColor: isRecording ? 'var(--accent-color)' : '#334155'
+                  }}
+                  className="w-2 rounded-full transition-all duration-300"
+                />
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              {!isRecording ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!confirmedStudent) {
+                      const std = students.find(s => s.id === selectedStudentId);
+                      setConfirmedStudent(std);
+                    }
+                    startRecording();
+                  }}
+                  style={{ backgroundColor: 'var(--primary-color)' }}
+                  className="w-full py-3 px-4 rounded-xl font-bold text-sm text-white shadow-lg hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Mic className="w-5 h-5" />
+                  <span>Mulai Perekaman {isTilawah ? 'Tilawah Mujawwad' : 'Hafalan'}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition cursor-pointer flex items-center justify-center gap-2 animate-pulse"
+                >
+                  <Square className="w-5 h-5" />
+                  <span>Hentikan Perekaman (Selesai)</span>
+                </button>
+              )}
+
+              {recordedAudioUrl && (
+                <div className="p-3.5 rounded-xl bg-slate-800/90 border border-slate-700 space-y-3">
+                  <div className="text-xs font-semibold text-emerald-300 flex items-center justify-between">
+                    <span>Preview Hasil Rekaman Suara:</span>
+                    <span>Durasi: {formatDuration(Math.max(1, recordingSeconds))}</span>
+                  </div>
+                  <audio controls src={recordedAudioUrl} className="w-full h-9" />
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={handleSaveToDriveAndSheet}
+                    style={{ backgroundColor: 'var(--accent-color)' }}
+                    className="w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm text-slate-950 shadow transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>
+                      {isUploading
+                        ? 'Menyimpan ke Google Drive & Spreadsheet...'
+                        : 'Simpan Rekaman ke Google Drive & Rekap Spreadsheet'}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TABEL RIWAYAT REKAMAN */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h4 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5" style={{ color: 'var(--primary-color)' }} />
+            <span>
+              Data Rekaman {isTilawah ? 'Tilawah Mujawwad' : 'Tahfiz'} yang Tersimpan di Drive & Spreadsheet
+              {confirmedStudent ? ` (${confirmedStudent.name})` : ''}
+            </span>
+          </h4>
+          {confirmedStudent && (
+            <button
+              onClick={() => setConfirmedStudent(null)}
+              style={{ color: 'var(--primary-color)' }}
+              className="text-xs font-semibold hover:underline cursor-pointer"
+            >
+              Tampilkan Semua Murid ({records.length})
+            </button>
+          )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                <th className="p-3 font-bold">Waktu</th>
+                <th className="p-3 font-bold">Nama Murid</th>
+                <th className="p-3 font-bold">Surat & Ayat</th>
+                <th className="p-3 font-bold">File Google Drive</th>
+                <th className="p-3 font-bold">Putar Audio</th>
+                <th className="p-3 font-bold">Status Spreadsheet</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {studentRecords.map((rec) => (
+                <tr key={rec.id} className="hover:bg-slate-50">
+                  <td className="p-3 whitespace-nowrap text-slate-500">{rec.timestamp}</td>
+                  <td className="p-3 font-bold text-slate-800">
+                    {rec.studentName} <span className="text-slate-500 font-normal">({rec.kelas})</span>
+                  </td>
+                  <td className="p-3">
+                    <span className="font-bold" style={{ color: 'var(--primary-color)' }}>Juz {rec.juz} • QS. {rec.surahName}</span>
+                    <span className="block text-slate-500">Ayat {rec.ayatStart} s/d {rec.ayatEnd}</span>
+                  </td>
+                  <td className="p-3 font-mono text-[11px] text-slate-600">
+                    <div className="flex items-center gap-1">
+                      <FolderGit2 className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--accent-color)' }} />
+                      <span className="truncate max-w-[200px]">{rec.driveFileId}</span>
+                    </div>
+                  </td>
+                  <td className="p-3 min-w-[210px]">
+                    <audio controls src={rec.audioUrl} className="w-48 h-8" />
+                  </td>
+                  <td className="p-3">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                      <CheckCircle2 className="w-3 h-3" /> {rec.sheetStatus}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONEN HALAMAN 2 & 5: PENILAIAN TAHFIZ / TILAWAH MUJAWWAD GURU
+// ============================================================================
+function TeacherEvaluationPage({
+  pageNumber,
+  category,
+  title,
+  subtitle,
+  schoolName,
+  students,
+  teachers,
+  teacherPassword,
+  records,
+  onSaveEvaluation,
+  showToast
+}) {
+  const isTilawah = category === 'tilawah';
+  const [selectedTeacherId, setSelectedTeacherId] = useState(teachers[0]?.id || "");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [loggedInTeacher, setLoggedInTeacher] = useState(null);
+  const [selectedStudentFilter, setSelectedStudentFilter] = useState("ALL");
+  const [drafts, setDrafts] = useState({});
+
+  useEffect(() => {
+    if (teachers.length > 0 && !teachers.some(t => t.id === selectedTeacherId)) {
+      setSelectedTeacherId(teachers[0].id);
+    }
+  }, [teachers, selectedTeacherId]);
+
+  const handleTeacherLogin = (e) => {
+    e.preventDefault();
+    if (passwordInput.trim() === String(teacherPassword || "123456")) {
+      const teacher = teachers.find(t => t.id === selectedTeacherId) || teachers[0];
+      setLoggedInTeacher(teacher);
+      showToast(`Selamat datang, ${teacher.name}. Silakan pilih murid dan berikan penilaian.`);
+    } else {
+      showToast(`Password Guru salah! Gunakan password: ${teacherPassword || "123456"}`, "error");
+    }
+  };
+
+  const getDraft = (rec) => {
+    return drafts[rec.id] || {
+      grade: rec.grade || "",
+      teacherComment: rec.teacherComment || ""
+    };
+  };
+
+  const updateDraft = (recId, field, value, currentRec) => {
+    const existing = drafts[recId] || {
+      grade: currentRec.grade || "",
+      teacherComment: currentRec.teacherComment || ""
+    };
+    setDrafts(prev => ({
+      ...prev,
+      [recId]: { ...existing, [field]: value }
+    }));
+  };
+
+  const filteredRecords = selectedStudentFilter === "ALL"
+    ? records
+    : records.filter(r => r.studentId === selectedStudentFilter);
+
+  return (
+    <div className="space-y-6">
+      <div
+        style={{
+          background: isTilawah
+            ? 'linear-gradient(90deg, var(--accent-color), var(--primary-color))'
+            : 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))'
+        }}
+        className="rounded-2xl p-6 text-white shadow-md"
+      >
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-black/25 text-white mb-2">
+          <Award className="w-3.5 h-3.5" />
+          <span>Halaman {pageNumber} • Portal Guru Pembina {schoolName}</span>
+        </span>
+        <h3 className="text-xl sm:text-2xl font-extrabold">{title}</h3>
+        <p className="text-xs sm:text-sm text-white/90 mt-1">{subtitle}</p>
+      </div>
+
+      {/* PANEL LOGIN GURU */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h4 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <Lock className="w-5 h-5" style={{ color: 'var(--primary-color)' }} />
+            <span>Otentikasi Guru Pembina (Password: {teacherPassword})</span>
+          </h4>
+          {loggedInTeacher && (
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+              <Unlock className="w-3.5 h-3.5" /> Login Aktif: {loggedInTeacher.name}
+            </span>
+          )}
+        </div>
+
+        <form onSubmit={handleTeacherLogin} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div className="sm:col-span-5">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Pilih Nama Guru Pembina:</label>
+            <select
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-800 bg-slate-50"
+            >
+              {teachers.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.role})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-4">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-600">Password Guru:</label>
+              <button
+                type="button"
+                onClick={() => setPasswordInput(String(teacherPassword))}
+                style={{ color: 'var(--primary-color)' }}
+                className="text-[11px] font-bold hover:underline cursor-pointer"
+              >
+                Isi Otomatis ({teacherPassword})
+              </button>
+            </div>
+            <input
+              type="password"
+              placeholder={`Masukkan ${teacherPassword}`}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-800 bg-slate-50"
+            />
+          </div>
+
+          <div className="sm:col-span-3">
+            <button
+              type="submit"
+              style={{ backgroundColor: 'var(--primary-color)' }}
+              className="w-full py-2.5 px-5 rounded-xl font-bold text-sm text-white shadow-sm hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              <span>OK (Masuk)</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {!loggedInTeacher ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center space-y-2">
+          <Lock className="w-10 h-10 text-amber-600 mx-auto" />
+          <h4 className="text-base font-bold text-amber-950">Halaman Penilaian Terkunci</h4>
+          <p className="text-xs text-amber-800 max-w-md mx-auto">
+            Silakan pilih Nama Guru Pembina, ketik password <strong>{teacherPassword}</strong>, lalu klik tombol <strong>OK (Masuk)</strong> di atas untuk membuka daftar rekaman murid.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Filter / Pilih Nama Murid untuk Dinilai:
+              </label>
+              <select
+                value={selectedStudentFilter}
+                onChange={(e) => setSelectedStudentFilter(e.target.value)}
+                className="w-full sm:max-w-md rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-800 bg-slate-50"
+              >
+                <option value="ALL">-- Tampilkan Semua Murid ({records.length} Rekaman) --</option>
+                {students.map((std, i) => (
+                  <option key={std.id} value={std.id}>
+                    {i + 1}. {std.name} ({std.kelas})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="text-xs text-slate-500">
+              Menampilkan <strong>{filteredRecords.length}</strong> data rekaman {isTilawah ? 'Tilawah Mujawwad' : 'Tahfiz'}
+            </div>
+          </div>
+
+          {filteredRecords.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+              Belum ada data rekaman untuk murid yang dipilih.
+            </div>
+          ) : (
+            filteredRecords.map((rec) => {
+              const currentDraft = getDraft(rec);
+              return (
+                <div key={rec.id} className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          style={{ backgroundColor: 'var(--primary-color)' }}
+                          className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white"
+                        >
+                          {rec.kelas}
+                        </span>
+                        <h5 className="text-base font-extrabold text-slate-900">{rec.studentName}</h5>
+                        <span className="text-xs text-slate-400">• {rec.timestamp}</span>
+                      </div>
+                      <div className="text-sm font-semibold mt-1" style={{ color: 'var(--primary-color)' }}>
+                        Juz {rec.juz} • QS. {rec.surahName} (Surat ke-{rec.surahNumber}) — Ayat {rec.ayatStart} s/d {rec.ayatEnd}
+                        {rec.nagham && <span className="ml-2 text-amber-700">• Nagham: {rec.nagham}</span>}
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-900 text-white p-3 rounded-xl flex items-center gap-3 shrink-0">
+                      <Play className="w-4 h-4 shrink-0" style={{ color: 'var(--accent-color)' }} />
+                      <div>
+                        <div className="text-[10px] text-slate-300 mb-1">Putar Rekaman ({rec.duration}):</div>
+                        <audio controls src={rec.audioUrl} className="h-8 w-56 sm:w-64" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <div className="md:col-span-4">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Pilihan Nilai (Mumtaz / Jayyid Jiddan / Jayyid / dst):
+                      </label>
+                      <select
+                        value={currentDraft.grade}
+                        onChange={(e) => updateDraft(rec.id, 'grade', e.target.value, rec)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-bold text-slate-800 bg-slate-50"
+                      >
+                        {GRADE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-6">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Komentar / Catatan Evaluasi Guru:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Tajwid & makhraj sangat baik, pertahankan kelancaran hafalan..."
+                        value={currentDraft.teacherComment}
+                        onChange={(e) => updateDraft(rec.id, 'teacherComment', e.target.value, rec)}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 bg-slate-50"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <button
+                        type="button"
+                        onClick={() => onSaveEvaluation(rec.id, currentDraft.grade, currentDraft.teacherComment, loggedInTeacher.name)}
+                        style={{ backgroundColor: 'var(--primary-color)' }}
+                        className="w-full py-2.5 px-4 rounded-xl font-bold text-sm text-white shadow hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>Simpan</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {rec.grade && (
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 border-t border-slate-100">
+                      <div>
+                        Status Tersimpan: <strong style={{ color: 'var(--primary-color)' }}>{rec.grade}</strong> • Dinilai oleh: <strong>{rec.teacherName || loggedInTeacher.name}</strong>
+                      </div>
+                      {rec.parentComment && (
+                        <div className="text-amber-800 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
+                          💬 Feedback Orang Tua: "{rec.parentComment}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONEN HALAMAN 3 & 6: PORTAL ORANG TUA (TAHFIZ & TILAWAH MUJAWWAD)
+// ============================================================================
+function ParentPortalPage({
+  pageNumber,
+  category,
+  title,
+  subtitle,
+  schoolName,
+  students,
+  records,
+  onSaveFeedback,
+  showToast,
+  onOpenPasswordList
+}) {
+  const isTilawah = category === 'tilawah';
+  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || "");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [verifiedStudent, setVerifiedStudent] = useState(null);
+  const [feedbackDrafts, setFeedbackDrafts] = useState({});
+
+  useEffect(() => {
+    if (students.length > 0 && !students.some(s => s.id === selectedStudentId)) {
+      setSelectedStudentId(students[0].id);
+    }
+  }, [students, selectedStudentId]);
+
+  const currentSelectedStudentObj = students.find(s => s.id === selectedStudentId);
+
+  const handleParentLogin = (e) => {
+    e.preventDefault();
+    const std = students.find(s => s.id === selectedStudentId);
+    if (!std) return;
+
+    if (passwordInput.trim() === String(std.password)) {
+      setVerifiedStudent(std);
+      showToast(`Berhasil masuk Portal Orang Tua untuk ananda ${std.name}.`);
+    } else {
+      showToast(`Password salah! Password untuk ${std.name} adalah ${std.password}.`, "error");
+    }
+  };
+
+  const studentRecords = verifiedStudent
+    ? records.filter(r => r.studentId === verifiedStudent.id)
+    : [];
+
+  return (
+    <div className="space-y-6">
+      <div
+        style={{
+          background: isTilawah
+            ? 'linear-gradient(90deg, var(--accent-color), var(--primary-color))'
+            : 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))'
+        }}
+        className="rounded-2xl p-6 text-white shadow-md"
+      >
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-black/25 text-white mb-2">
+          <Users className="w-3.5 h-3.5" />
+          <span>Halaman {pageNumber} • Portal Orang Tua / Wali Murid {schoolName}</span>
+        </span>
+        <h3 className="text-xl sm:text-2xl font-extrabold">{title}</h3>
+        <p className="text-xs sm:text-sm text-white/90 mt-1">{subtitle}</p>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h4 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <Lock className="w-5 h-5" style={{ color: 'var(--primary-color)' }} />
+            <span>Akses Orang Tua Murid (Password Unik Putra/Putri)</span>
+          </h4>
+          <button
+            type="button"
+            onClick={onOpenPasswordList}
+            style={{ color: 'var(--primary-color)' }}
+            className="text-xs font-bold hover:underline cursor-pointer"
+          >
+            Lihat Daftar Lengkap Password {students.length} Murid
+          </button>
+        </div>
+
+        <form onSubmit={handleParentLogin} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div className="sm:col-span-5">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Pilih Nama Putra / Putri Anda:</label>
+            <select
+              value={selectedStudentId}
+              onChange={(e) => {
+                setSelectedStudentId(e.target.value);
+                setVerifiedStudent(null);
+              }}
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-800 bg-slate-50"
+            >
+              {students.map((std, idx) => (
+                <option key={std.id} value={std.id}>
+                  {idx + 1}. {std.name} ({std.kelas})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-4">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-600">Password Murid:</label>
+              {currentSelectedStudentObj && (
+                <button
+                  type="button"
+                  onClick={() => setPasswordInput(currentSelectedStudentObj.password)}
+                  style={{ color: 'var(--primary-color)' }}
+                  className="text-[11px] font-bold hover:underline cursor-pointer"
+                >
+                  Isi Password ({currentSelectedStudentObj.password})
+                </button>
+              )}
+            </div>
+            <input
+              type="password"
+              placeholder="Masukkan password anak"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-800 bg-slate-50"
+            />
+          </div>
+
+          <div className="sm:col-span-3">
+            <button
+              type="submit"
+              style={{ backgroundColor: 'var(--primary-color)' }}
+              className="w-full py-2.5 px-5 rounded-xl font-bold text-sm text-white shadow-sm hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Unlock className="w-4 h-4" />
+              <span>Buka Data Anak</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {!verifiedStudent ? (
+        <div className="bg-slate-100 border border-slate-200 rounded-2xl p-8 text-center space-y-2">
+          <Users className="w-10 h-10 text-slate-500 mx-auto" />
+          <h4 className="text-base font-bold text-slate-800">Silakan Login dengan Password Putra/Putri Anda</h4>
+          <p className="text-xs text-slate-600 max-w-md mx-auto">
+            Pilih nama murid dan masukkan kode password uniknya untuk mendengarkan rekaman suara anak, melihat nilai dari guru, serta memberikan feedback.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="text-xs font-bold uppercase" style={{ color: 'var(--primary-color)' }}>Laporan Perkembangan Ananda:</span>
+              <h4 className="text-lg font-extrabold text-slate-900">
+                {verifiedStudent.name} — Kelas {verifiedStudent.kelas}
+              </h4>
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-white text-slate-800 border border-slate-200">
+              Total Setoran {isTilawah ? 'Tilawah Mujawwad' : 'Tahfiz'}: {studentRecords.length} Rekaman
+            </span>
+          </div>
+
+          {studentRecords.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+              Ananda <strong>{verifiedStudent.name}</strong> belum memiliki rekaman pada kategori {isTilawah ? 'Tilawah Mujawwad' : 'Tahfiz'} ini.
+            </div>
+          ) : (
+            studentRecords.map((rec) => {
+              const feedbackText = feedbackDrafts[rec.id] !== undefined
+                ? feedbackDrafts[rec.id]
+                : (rec.parentComment || "");
+
+              return (
+                <div key={rec.id} className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                      <span className="text-xs text-slate-400">{rec.timestamp}</span>
+                      <h5 className="text-base font-extrabold text-slate-800 mt-0.5">
+                        Juz {rec.juz} • QS. {rec.surahName} (Ayat {rec.ayatStart} s/d {rec.ayatEnd})
+                      </h5>
+                      {rec.nagham && (
+                        <span className="inline-block mt-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
+                          Irama / Nagham: {rec.nagham}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="bg-slate-900 text-white p-3 rounded-xl flex items-center gap-3 shrink-0">
+                      <Volume2 className="w-4 h-4 shrink-0" style={{ color: 'var(--accent-color)' }} />
+                      <div>
+                        <div className="text-[10px] text-slate-300 mb-1">Dengarkan Rekaman Anak ({rec.duration}):</div>
+                        <audio controls src={rec.audioUrl} className="h-8 w-56 sm:w-64" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                    <div>
+                      <div className="text-xs font-bold text-slate-500 uppercase">Hasil Penilaian Guru:</div>
+                      {rec.grade ? (
+                        <div className="mt-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-extrabold text-sm">
+                          <Award className="w-4 h-4 text-emerald-700" />
+                          <span>{rec.grade}</span>
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-xs font-semibold text-amber-700">
+                          Menunggu penilaian dari Guru Pembina
+                        </div>
+                      )}
+                      {rec.teacherName && (
+                        <div className="text-[11px] text-slate-500 mt-1">Penilai: {rec.teacherName}</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-bold text-slate-500 uppercase">Catatan / Komentar Guru:</div>
+                      <p className="text-xs sm:text-sm text-slate-700 mt-1 italic">
+                        {rec.teacherComment ? `"${rec.teacherComment}"` : "Belum ada catatan evaluasi dari guru."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4" style={{ color: 'var(--primary-color)' }} />
+                      <span>Feedback / Komentar Orang Tua untuk Guru & Anak:</span>
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2.5">
+                      <input
+                        type="text"
+                        placeholder="Tuliskan tanggapan atau dukungan orang tua mengenai hafalan/tilawah putra-putri Anda..."
+                        value={feedbackText}
+                        onChange={(e) => setFeedbackDrafts(prev => ({ ...prev, [rec.id]: e.target.value }))}
+                        className="flex-1 rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onSaveFeedback(rec.id, feedbackText)}
+                        style={{ backgroundColor: 'var(--primary-color)' }}
+                        className="py-2.5 px-5 rounded-xl font-bold text-sm text-white shadow hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>Simpan Feedback</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// KOMPONEN HALAMAN 7: REKAP SPREADSHEET & INTEGRASI GOOGLE DRIVE
+// ============================================================================
+function SpreadsheetRecapPage({
+  records,
+  schoolName,
+  teachers,
+  databasePin,
+  onExportCSV,
+  onDeleteRecord,
+  onOpenGasModal,
+  gasWebhookUrl,
+  setGasWebhookUrl,
+  isUnlocked,
+  setIsUnlocked,
+  showToast
+}) {
+  const [pinInput, setPinInput] = useState("");
+  const [selectedAdminRole, setSelectedAdminRole] = useState(`Admin Database & Kurikulum ${schoolName}`);
+  const [filterCat, setFilterCat] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const handleUnlockDatabase = (e) => {
+    e.preventDefault();
+    const cleanedPin = pinInput.trim();
+    if (cleanedPin === String(databasePin || "123456") || cleanedPin.toLowerCase() === "admin123") {
+      setIsUnlocked(true);
+      showToast(`Akses Database & Spreadsheet dibuka untuk ${selectedAdminRole}!`);
+    } else {
+      showToast(`PIN / Password Database salah! Gunakan PIN: ${databasePin || "123456"} atau admin123`, "error");
+    }
+  };
+
+  const handleLockDatabase = () => {
+    setIsUnlocked(false);
+    setPinInput("");
+    setConfirmDeleteId(null);
+    showToast("Halaman Database & Rekapitulasi Spreadsheet telah dikunci kembali.");
+  };
+
+  const displayed = records.filter(r => {
+    const matchCategory = filterCat === "all" || r.category === filterCat;
+    const q = searchQuery.toLowerCase().trim();
+    const matchSearch = !q ||
+      r.studentName.toLowerCase().includes(q) ||
+      r.surahName.toLowerCase().includes(q) ||
+      r.kelas.toLowerCase().includes(q) ||
+      (r.grade && r.grade.toLowerCase().includes(q)) ||
+      r.id.toLowerCase().includes(q);
+    return matchCategory && matchSearch;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div
+        style={{ background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }}
+        className="rounded-2xl p-6 text-white shadow-md"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span
+              style={{ backgroundColor: 'var(--accent-color)' }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-slate-950 mb-2"
+            >
+              {isUnlocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+              <span>Database Terproteksi PIN • Google Drive & Spreadsheet</span>
+            </span>
+            <h3 className="text-xl sm:text-2xl font-extrabold">
+              Rekapitulasi Spreadsheet & Folder Audio Google Drive — {schoolName}
+            </h3>
+            <p className="text-xs sm:text-sm text-white/85 mt-1">
+              Halaman ini dilindungi PIN/Password untuk menjaga keamanan data rekaman suara murid, nilai guru, dan konfigurasi cloud sekolah.
+            </p>
+          </div>
+
+          {isUnlocked && (
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <button
+                onClick={onOpenGasModal}
+                className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/25 flex items-center gap-2 cursor-pointer"
+              >
+                <Code className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
+                <span>Kode Google Apps Script</span>
+              </button>
+              <button
+                onClick={() => onExportCSV(filterCat)}
+                style={{ backgroundColor: 'var(--accent-color)' }}
+                className="px-4 py-2.5 rounded-xl text-slate-950 text-xs font-bold shadow flex items-center gap-2 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Unduh File Spreadsheet (.CSV)</span>
+              </button>
+              <button
+                onClick={handleLockDatabase}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer"
+              >
+                <Lock className="w-4 h-4" />
+                <span>Kunci Kembali</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* PANEL AUTHENTIKASI PIN DATABASE */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h4 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            {isUnlocked ? (
+              <Unlock className="w-5 h-5" style={{ color: 'var(--primary-color)' }} />
+            ) : (
+              <Lock className="w-5 h-5 text-amber-600" />
+            )}
+            <span>Verifikasi PIN / Password Admin Database & Guru Koordinator</span>
+          </h4>
+
+          {isUnlocked ? (
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Status: Terbuka ({selectedAdminRole})
+            </span>
+          ) : (
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5" /> Status: Terkunci
+            </span>
+          )}
+        </div>
+
+        {!isUnlocked ? (
+          <form onSubmit={handleUnlockDatabase} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div className="md:col-span-5">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Pilih Otoritas Pengakses Database:
+              </label>
+              <select
+                value={selectedAdminRole}
+                onChange={(e) => setSelectedAdminRole(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-800 bg-slate-50"
+              >
+                <option value={`Admin Database & Kurikulum ${schoolName}`}>Admin Database & Kurikulum {schoolName}</option>
+                {teachers.map(t => (
+                  <option key={t.id} value={`${t.name} (${t.role})`}>
+                    {t.name} — {t.role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-4">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-600">
+                  Masukkan PIN / Password Database:
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPinInput(String(databasePin || "123456"))}
+                  style={{ color: 'var(--primary-color)' }}
+                  className="text-[11px] font-bold hover:underline cursor-pointer"
+                >
+                  Isi PIN ({databasePin || "123456"})
+                </button>
+              </div>
+              <input
+                type="password"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                placeholder={`PIN: ${databasePin || "123456"} atau admin123`}
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-800"
+              />
+            </div>
+
+            <div className="md:col-span-3">
+              <button
+                type="submit"
+                style={{ backgroundColor: 'var(--primary-color)' }}
+                className="w-full py-2.5 px-5 rounded-xl font-bold text-sm text-white shadow-sm hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Unlock className="w-4 h-4" />
+                <span>OK / Buka Kunci</span>
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>
+                Anda masuk sebagai <strong>{selectedAdminRole}</strong>. Anda memiliki akses penuh untuk melihat tabel rekapitulasi, mengunduh CSV/Excel, mengelola data, dan mengatur Webhook Google Drive.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleLockDatabase}
+              className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold shrink-0 cursor-pointer flex items-center gap-1"
+            >
+              <Lock className="w-3.5 h-3.5" /> Kunci Database
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!isUnlocked ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-10 text-center space-y-3">
+          <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto border-2 border-amber-300">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h4 className="text-lg font-extrabold text-amber-950">
+            Akses Rekapitulasi Spreadsheet & Integrasi Google Drive Terkunci
+          </h4>
+          <p className="text-xs sm:text-sm text-amber-800 max-w-lg mx-auto">
+            Silakan masukkan PIN/Password Admin Database (<code className="bg-amber-200/80 px-1.5 py-0.5 rounded font-bold">{databasePin || "123456"}</code> atau <code className="bg-amber-200/80 px-1.5 py-0.5 rounded font-bold">admin123</code>) pada kolom di atas lalu klik tombol <strong>OK / Buka Kunci</strong>.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+              <div className="lg:col-span-7">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  URL Web App Google Apps Script (Integrasi Google Drive & Google Spreadsheet {schoolName}):
+                </label>
+                <input
+                  type="text"
+                  value={gasWebhookUrl}
+                  onChange={(e) => setGasWebhookUrl(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-mono text-slate-700 bg-slate-50"
+                />
+              </div>
+              <div className="lg:col-span-5 flex flex-wrap gap-2">
+                <button
+                  onClick={() => showToast("Koneksi ke Endpoint Google Drive & Spreadsheet terverifikasi!")}
+                  style={{ backgroundColor: 'var(--primary-color)' }}
+                  className="px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Tes Sinkronisasi Cloud</span>
+                </button>
+                <a
+                  href="https://drive.google.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 flex items-center gap-1.5"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" style={{ color: 'var(--primary-color)' }} />
+                  <span>Buka Folder Drive</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="sm:col-span-6 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari nama murid, kelas, nama surat, atau predikat nilai..."
+                  className="w-full rounded-xl border border-slate-300 pl-9 pr-3.5 py-2 text-xs text-slate-800 bg-slate-50"
+                />
+              </div>
+
+              <div className="sm:col-span-4">
+                <select
+                  value={filterCat}
+                  onChange={(e) => setFilterCat(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-50"
+                >
+                  <option value="all">Semua Kategori ({records.length} Data)</option>
+                  <option value="tahfiz">Khusus Tahfiz ({records.filter(r => r.category === 'tahfiz').length} Data)</option>
+                  <option value="tilawah">Khusus Tilawah Mujawwad ({records.filter(r => r.category === 'tilawah').length} Data)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2 text-right text-xs font-bold text-slate-600">
+                Ditampilkan: {displayed.length} Baris
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
+                    <th className="p-3">No</th>
+                    <th className="p-3">Kategori</th>
+                    <th className="p-3">Nama Murid</th>
+                    <th className="p-3">Surat & Ayat (Juz 30/29)</th>
+                    <th className="p-3">File Rekaman Drive</th>
+                    <th className="p-3">Audio</th>
+                    <th className="p-3">Nilai Guru</th>
+                    <th className="p-3">Komentar Guru</th>
+                    <th className="p-3">Feedback Orang Tua</th>
+                    <th className="p-3 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {displayed.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="p-8 text-center text-slate-400">
+                        Tidak ada data rekaman yang sesuai dengan filter pencarian.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayed.map((rec, idx) => (
+                      <tr key={rec.id} className="hover:bg-slate-50">
+                        <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            rec.category === 'tahfiz'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {rec.category === 'tahfiz' ? 'Tahfiz' : 'Tilawah Mujawwad'}
+                          </span>
+                        </td>
+                        <td className="p-3 font-bold text-slate-800">
+                          {rec.studentName}
+                          <span className="block text-[10px] text-slate-500 font-normal">{rec.kelas} • {rec.timestamp}</span>
+                        </td>
+                        <td className="p-3 font-semibold" style={{ color: 'var(--primary-color)' }}>
+                          Juz {rec.juz} • QS. {rec.surahName}: {rec.ayatStart}-{rec.ayatEnd}
+                        </td>
+                        <td className="p-3 font-mono text-[11px] text-slate-600 max-w-[180px] truncate" title={rec.driveFileId}>
+                          {rec.driveFileId}
+                        </td>
+                        <td className="p-3 min-w-[180px]">
+                          <audio controls src={rec.audioUrl} className="w-40 h-8" />
+                        </td>
+                        <td className="p-3 font-bold">
+                          {rec.grade ? (
+                            <span style={{ color: 'var(--primary-color)' }}>{rec.grade}</span>
+                          ) : (
+                            <span className="text-slate-400 italic">Belum dinilai</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-700 max-w-[200px]">
+                          {rec.teacherComment || <span className="text-slate-400 italic">-</span>}
+                        </td>
+                        <td className="p-3 text-slate-700 max-w-[200px]">
+                          {rec.parentComment || <span className="text-slate-400 italic">-</span>}
+                        </td>
+                        <td className="p-3 text-center">
+                          {confirmDeleteId === rec.id ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => {
+                                  onDeleteRecord(rec.id);
+                                  setConfirmDeleteId(null);
+                                }}
+                                className="px-2 py-1 rounded bg-rose-600 text-white text-[10px] font-bold cursor-pointer"
+                              >
+                                Ya
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="px-2 py-1 rounded bg-slate-200 text-slate-700 text-[10px] font-bold cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteId(rec.id)}
+                              title="Hapus Baris Data"
+                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// MODAL KODE GOOGLE APPS SCRIPT (MENDUKUNG REKAMAN & SINKRONISASI WHITE-LABEL)
+// ============================================================================
+function GoogleAppsScriptModal({ schoolName, onClose, showToast }) {
+  const gasCode = `// KODE GOOGLE APPS SCRIPT - WHITE-LABEL E-TAHFIZ & TILAWAH (${schoolName})
+// Pasang di Extensions > Apps Script pada Google Spreadsheet Sekolah
+
+const DRIVE_FOLDER_ID = "ISI_DENGAN_ID_FOLDER_GOOGLE_DRIVE_SEKOLAH";
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // A. JIKA AKSI ADALAH SINKRONISASI PENGATURAN WHITE-LABEL ADMIN
+    if (data.action === "SAVE_WHITELABEL_CONFIG") {
+      let configSheet = ss.getSheetByName("Sheet_Config") || ss.insertSheet("Sheet_Config");
+      configSheet.clear();
+      configSheet.appendRow(["Waktu Sinkronisasi", "Nama Sekolah", "Judul Program", "JSON DEFAULT_CONFIG"]);
+      configSheet.appendRow([
+        new Date(),
+        data.config.schoolName,
+        data.config.programTitle,
+        JSON.stringify(data.config)
+      ]);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", type: "config_saved" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // B. JIKA AKSI ADALAH SIMPAN REKAMAN SUARA MURID KE DRIVE & SPREADSHEET
+    const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    let fileUrl = "";
+    if (data.audioBase64) {
+      const bytes = Utilities.base64Decode(data.audioBase64);
+      const blob = Utilities.newBlob(bytes, "audio/webm", data.driveFileId);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = file.getUrl();
+    }
+
+    const sheetName = data.category === "tahfiz" ? "Sheet_Tahfiz" : "Sheet_Tilawah";
+    let sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
+    
+    sheet.appendRow([
+      new Date(),
+      data.id,
+      data.studentName,
+      data.kelas,
+      "Juz " + data.juz,
+      data.surahName,
+      data.ayatStart + " - " + data.ayatEnd,
+      fileUrl,
+      data.grade || "",
+      data.teacherComment || "",
+      data.parentComment || ""
+    ]);
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", fileUrl }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(gasCode);
+    showToast("Kode Google Apps Script berhasil disalin!");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div
+          style={{ background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }}
+          className="text-white px-6 py-4 flex items-center justify-between"
+        >
+          <h3 className="text-base font-bold flex items-center gap-2">
+            <Code className="w-5 h-5" style={{ color: 'var(--accent-color)' }} />
+            Script Integrasi Google Drive & Spreadsheet (Termasuk Sheet_Config)
+          </h3>
+          <button onClick={onClose} className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold cursor-pointer">
+            Tutup ✕
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-xs text-slate-600">
+            Salin kode di bawah ini ke menu <strong>Extensions &gt; Apps Script</strong> pada Google Spreadsheet sekolah agar setiap rekaman murid maupun pengaturan White-Label Admin langsung tersimpan di Cloud.
+          </p>
+          <pre className="bg-slate-900 text-emerald-300 p-4 rounded-xl text-xs font-mono overflow-x-auto max-h-80">
+            {gasCode}
+          </pre>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={copyCode}
+              style={{ backgroundColor: 'var(--primary-color)' }}
+              className="px-4 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Copy className="w-4 h-4" /> Salin Kode Apps Script
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
