@@ -32,29 +32,42 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-slate-50">
-  <div id="root"></div>
+  <!-- Indikator Loading Awal (Akan otomatis hilang saat aplikasi muncul) -->
+  <div id="root">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#065f46;font-weight:bold;">
+      Memuat Portal E-Tahfiz & Tilawah SMPN 4 Malang...
+    </div>
+  </div>
 
   <!-- Memuat & Menjalankan File .TSX secara Otomatis -->
-  <script>
-    fetch('./e_tahfiz_tilawah_smpn_4_malang.tsx')
-      .then(res => res.text())
-      .then(tsxCode => {
-        // Ubah 'export default function App()' menjadi 'function App()' secara otomatis
+  <script type="module">
+    async function loadApp() {
+      try {
+        const res = await fetch('./e_tahfiz_tilawah_smpn_4_malang.tsx');
+        if (!res.ok) throw new Error('File .tsx tidak ditemukan (HTTP ' + res.status + ')');
+        
+        const tsxCode = await res.text();
+
+        // Ubah 'export default function App()' menjadi 'function App()' dan tambahkan perender
         const modifiedCode = tsxCode.replace('export default function App()', 'function App()') +
           '\nimport { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root")).render(<App />);';
         
-        // Terjemahkan kode .TSX menjadi JavaScript yang dimengerti browser
+        // PENTING: Gunakan modules: false pada preset env agar 'import' tidak diubah menjadi 'require()'
         const compiled = Babel.transform(modifiedCode, {
-          presets: ['react', 'typescript'],
+          presets: [
+            ['env', { modules: false }],
+            'react',
+            'typescript'
+          ],
+          sourceType: 'module',
           filename: 'app.tsx'
         }).code;
 
-        // Jalankan aplikasinya
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.textContent = compiled;
-        document.body.appendChild(script);
-      });
-  </script>
-</body>
-</html>
+        // Jalankan kode hasil terjemahan sebagai ES Module
+        const blob = new Blob([compiled], { type: 'text/javascript' });
+        const moduleUrl = URL.createObjectURL(blob);
+        await import(moduleUrl);
+      } catch (err) {
+        document.getElementById('root').innerHTML = 
+          '<div style="padding:24px;color:#be123c;font-family:monospace;background:#ffe4e6;margin:20px;border-radius:12px;">' +
+          '<strong>Detail Kendala Teknis:</strong><br/>
