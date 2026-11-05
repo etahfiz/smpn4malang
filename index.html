@@ -4,17 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <!-- KODE SEO E-TAHFIZ SMPN 4 MALANG -->
-  <title>E-Tahfiz & Tilawah Mujawwad Al-Qur'an - SMP Negeri 4 Malang</title>
-  <meta name="description" content="Portal resmi E-Tahfiz dan Tilawah Mujawwad Al-Qur'an SMP Negeri 4 Malang (Jl. Veteran No. 37). Sistem terintegrasi perekaman setoran Juz 30 & Juz 29, penilaian guru, dan pemantauan orang tua." />
-  <meta name="keywords" content="E-Tahfiz SMPN 4 Malang, Tilawah Mujawwad SMPN 4 Malang, Setoran Hafalan SMP Negeri 4 Malang, Arspema" />
+  <!-- KODE SEO DINAMIS E-TAHFIZ & TILAWAH -->
+  <title>E-Tahfiz & Tilawah Mujawwad Al-Qur'an - Portal Resmi Sekolah</title>
+  <meta name="description" content="Sistem terintegrasi perekaman setoran Tahfiz & Tilawah Mujawwad Al-Qur'an Juz 30 & Juz 29, penilaian guru pembina, dan portal pemantauan orang tua." />
+  <meta name="keywords" content="E-Tahfiz Sekolah, Tilawah Mujawwad, Setoran Hafalan Online, Aplikasi Tahfiz Sekolah, SMP Negeri 4 Malang" />
   <meta name="robots" content="index, follow" />
 
-  <!-- Tailwind CSS & Font -->
+  <!-- Tailwind CSS & Google Font Inter -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
+    /* Menyembunyikan tombol bocoran password saat Mode Produksi / Sekolah Resmi aktif */
+    body.production-mode button[title*="Isi"],
+    body.production-mode .demo-password-helper {
+      display: none !important;
+    }
   </style>
 
   <!-- Mesin React 18 & Lucide Icons -->
@@ -33,28 +38,138 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-slate-50">
-  <!-- Indikator Loading Awal -->
+  <!-- Indikator Loading Awal yang Elegan -->
   <div id="root">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#065f46;font-family:sans-serif;">
-      <div style="font-size:18px;font-weight:bold;margin-bottom:8px;">Memuat Aplikasi E-Tahfiz & Tilawah SMPN 4 Malang...</div>
-      <div style="font-size:13px;color:#64748b;">Mohon tunggu sebentar...</div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,#065f46,#115e59);color:#ffffff;font-family:'Inter',sans-serif;text-align:center;padding:20px;">
+      <div style="width:56px;height:56px;border-radius:16px;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px;box-shadow:0 10px 25px rgba(0,0,0,0.2);">🕌</div>
+      <div style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-bottom:6px;">Memuat Portal E-Tahfiz & Tilawah...</div>
+      <div style="font-size:13px;color:#d1fae5;max-width:360px;">Menyiapkan Studio Perekaman Audio, Portal Penilaian Guru & Database Spreadsheet...</div>
     </div>
   </div>
 
-  <!-- Memuat & Menjalankan File .TSX secara Otomatis -->
+  <!-- Mesin Injeksi Patch Komersial & Pemuat Aplikasi .TSX -->
   <script type="module">
-    async function loadApp() {
+    async function loadCommercialApp() {
       try {
         const res = await fetch('./e_tahfiz_tilawah_smpn_4_malang.tsx');
-        if (!res.ok) throw new Error('File .tsx tidak ditemukan (Status: ' + res.status + ')');
+        if (!res.ok) throw new Error('File e_tahfiz_tilawah_smpn_4_malang.tsx tidak ditemukan (Status: ' + res.status + ')');
         
-        const tsxCode = await res.text();
+        let tsxCode = await res.text();
+        window.__RAW_TSX_SOURCE__ = tsxCode;
 
-        // Ubah export default menjadi fungsi biasa dan tambahkan perender React
+        // 1. PATCH PENYIMPANAN PERMANEN REKAMAN, NILAI GURU & KOMENTAR ORTU KE LOCALSTORAGE
+        const oldRecordsInit = `  // State Data Rekaman
+  const [records, setRecords] = useState(() => {
+    const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
+    const tilawahSampleAudio = generateSimulatedMurottalWav(6, 'tilawah');
+    return INITIAL_RECORDS.map(rec => ({
+      ...rec,
+      audioUrl: rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio
+    }));
+  });`;
+
+        const newRecordsInit = `  // State Data Rekaman (Tersimpan Permanen di localStorage)
+  const [records, setRecords] = useState(() => {
+    const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
+    const tilawahSampleAudio = generateSimulatedMurottalWav(6, 'tilawah');
+    try {
+      const savedRecs = localStorage.getItem("ETAHFIZ_COMMERCIAL_RECORDS_V1");
+      if (savedRecs) {
+        const parsed = JSON.parse(savedRecs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(rec => ({
+            ...rec,
+            audioUrl: (rec.audioUrl && rec.audioUrl.startsWith('data:')) ? rec.audioUrl : (rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio)
+          }));
+        }
+      }
+    } catch (e) {}
+    return INITIAL_RECORDS.map(rec => ({
+      ...rec,
+      audioUrl: rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio
+    }));
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(records));
+    } catch (e) {}
+  }, [records]);`;
+
+        tsxCode = tsxCode.replace(oldRecordsInit, newRecordsInit);
+
+        // 2. PATCH KONVERSI REKAMAN AUDIO KE BASE64 AGAR PERMANEN & SUPPORT SAFARI/IOS
+        const oldBlobStop = `        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach(track => track.stop());
+          if (audioChunksRef.current.length > 0) {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const url = URL.createObjectURL(audioBlob);
+            setRecordedAudioUrl(url);
+          } else {
+            const simUrl = generateSimulatedMurottalWav(5, category);
+            setRecordedAudioUrl(simUrl);
+          }
+        };`;
+
+        const newBlobStop = `        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach(track => track.stop());
+          if (audioChunksRef.current.length > 0) {
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+            const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (typeof reader.result === 'string') {
+                setRecordedAudioUrl(reader.result);
+              }
+            };
+            reader.readAsDataURL(audioBlob);
+          } else {
+            const simUrl = generateSimulatedMurottalWav(5, category);
+            setRecordedAudioUrl(simUrl);
+          }
+        };`;
+
+        tsxCode = tsxCode.replace(oldBlobStop, newBlobStop);
+
+        // 3. PATCH SINKRONISASI OTOMATIS REKAMAN & NILAI KE GOOGLE APPS SCRIPT WEBHOOK
+        const oldAddRecord = `  const handleAddRecord = (newRecord) => {
+    setRecords(prev => [newRecord, ...prev]);
+    showToast(\`Rekaman \${newRecord.category === 'tahfiz' ? 'Tahfiz' : 'Tilawah Mujawwad'} berhasil disimpan ke Google Drive & direkap ke Spreadsheet!\`);
+  };`;
+
+        const newAddRecord = `  const handleAddRecord = (newRecord) => {
+    setRecords(prev => [newRecord, ...prev]);
+    if (config.gasWebhookUrl && config.gasWebhookUrl.startsWith("http") && !config.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
+      fetch(config.gasWebhookUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "SAVE_RECORD",
+          ...newRecord,
+          audioBase64: (newRecord.audioUrl && newRecord.audioUrl.startsWith("data:")) ? newRecord.audioUrl.split(",")[1] : ""
+        })
+      }).catch(() => {});
+    }
+    showToast(\`Rekaman \${newRecord.category === 'tahfiz' ? 'Tahfiz' : 'Tilawah Mujawwad'} berhasil disimpan permanen & direkap ke Spreadsheet!\`);
+  };`;
+
+        tsxCode = tsxCode.replace(oldAddRecord, newAddRecord);
+
+        // 4. PATCH TOMBOL ISI OTOMATIS PASSWORD AGAR BISA DISEMBUNYIKAN SAAT DIJUAL KE SEKOLAH (MODE RESMI)
+        tsxCode = tsxCode.replaceAll(
+          'className="text-[11px] font-bold hover:underline cursor-pointer"',
+          'className="text-[11px] font-bold hover:underline cursor-pointer demo-password-helper"'
+        );
+        tsxCode = tsxCode.replace(
+          'onClick={() => setShowPasswordModal(true)}\n                className="flex items-center gap-1.5 px-3 py-2',
+          'onClick={() => setShowPasswordModal(true)}\n                className="demo-password-helper flex items-center gap-1.5 px-3 py-2'
+        );
+
+        // Render Komponen Utama
         const modifiedCode = tsxCode.replace('export default function App()', 'function App()') +
           '\nimport { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root")).render(<App />);';
 
-        // Kompilasi TSX dengan mempertahankan ES Modules (agar import tidak diubah jadi require)
         const compiled = Babel.transform(modifiedCode, {
           presets: [
             ['react', { runtime: 'classic' }],
@@ -64,10 +179,12 @@
           filename: 'app.tsx'
         }).code;
 
-        // Jalankan kode hasil kompilasi sebagai ES Module menggunakan Blob URL
         const blob = new Blob([compiled], { type: 'text/javascript' });
         const moduleUrl = URL.createObjectURL(blob);
         await import(moduleUrl);
+
+        // Tambahkan Saklar Melayang "Mode Demo vs Mode Resmi Sekolah" khusus Admin
+        setupSecurityModeToggle();
       } catch (err) {
         document.getElementById('root').innerHTML = 
           '<div style="padding:24px;color:#be123c;font-family:monospace;background:#ffe4e6;margin:20px;border-radius:12px;">' +
@@ -75,7 +192,46 @@
         console.error(err);
       }
     }
-    loadApp();
+
+    function setupSecurityModeToggle() {
+      const savedMode = localStorage.getItem('ETAHFIZ_SECURITY_PRODUCTION_MODE') === 'true';
+      if (savedMode) document.body.classList.add('production-mode');
+
+      const btn = document.createElement('button');
+      const updateBtnText = (isProd) => {
+        btn.innerHTML = isProd 
+          ? '🔒 Mode Sekolah Resmi (Password Tersembunyi)' 
+          : '🔓 Mode Demo Penjualan (Bantuan Password Aktif)';
+        btn.style.backgroundColor = isProd ? '#0f172a' : '#b45309';
+      };
+      updateBtnText(savedMode);
+
+      btn.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:40;color:#fff;font-size:11px;font-weight:700;padding:8px 14px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.25);cursor:pointer;transition:all 0.2s;';
+      btn.onclick = () => {
+        const currentMode = document.body.classList.contains('production-mode');
+        const pin = prompt('Masukkan PIN Admin (Default: 999999) untuk mengubah Mode Keamanan Password:');
+        let adminPin = '999999';
+        try {
+          const cfg = JSON.parse(localStorage.getItem('ETAHFIZ_WHITELABEL_CONFIG_V1') || '{}');
+          if (cfg.adminPin) adminPin = String(cfg.adminPin);
+        } catch (e) {}
+
+        if (pin === adminPin) {
+          const nextMode = !currentMode;
+          document.body.classList.toggle('production-mode', nextMode);
+          localStorage.setItem('ETAHFIZ_SECURITY_PRODUCTION_MODE', String(nextMode));
+          updateBtnText(nextMode);
+          alert(nextMode 
+            ? 'MODE SEKOLAH RESMI AKTIF: Seluruh tombol bantuan "Isi Otomatis Password" dan "Daftar Password" kini disembunyikan dari murid.' 
+            : 'MODE DEMO AKTIF: Tombol bantuan pengisian password ditampilkan kembali untuk memudahkan presentasi ke calon pembeli.');
+        } else if (pin !== null) {
+          alert('PIN Admin salah!');
+        }
+      };
+      document.body.appendChild(btn);
+    }
+
+    loadCommercialApp();
   </script>
 </body>
 </html>
