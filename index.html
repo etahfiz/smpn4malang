@@ -15,7 +15,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
-    /* Menyembunyikan seluruh tombol bocoran password saat Mode Sekolah Resmi aktif */
     body.hide-password-hints .demo-pwd-btn {
       display: none !important;
     }
@@ -47,21 +46,16 @@
 
   <script type="module">
     // =========================================================================
-    // TEMPELKAN URL GOOGLE APPS SCRIPT (/exec) ANDA DI DALAM TANDA KUTIP DI BAWAH INI
-    // AGAR TERSIMPAN PERMANEN UNTUK SEMUA PERANGKAT (TERMASUK INCOGNITO & HP LAIN):
+    // TEMPELKAN URL GOOGLE APPS SCRIPT (/exec) ANDA DI DALAM TANDA KUTIP DI BAWAH INI:
     // =========================================================================
     const MASTER_CLOUD_URL = "https://script.google.com/macros/s/AKfycbyfr3PuxU9uYMLJpk1wA8vX00BFJ6wcjso-HlTjwzly7juJ7V-j-sIYSdmYg-55p9lj/exec";
 
     async function bootRealtimeApp() {
       try {
-        // 1. Tarik data terbaru dari Cloud Google Spreadsheet SEBELUM aplikasi dirender
-        let cloudConfig = null;
-        let cloudRecords = null;
-
         let activeWebhook = MASTER_CLOUD_URL;
         try {
           const localCfg = JSON.parse(localStorage.getItem("ETAHFIZ_WHITELABEL_CONFIG_V1") || "{}");
-          if ((!activeWebhook || activeWebhook === "TEMPEL_URL_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") && localCfg.gasWebhookUrl && localCfg.gasWebhookUrl.startsWith("http") && !localCfg.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
+          if ((!activeWebhook || activeWebhook === "https://script.google.com/macros/s/AKfycbyfr3PuxU9uYMLJpk1wA8vX00BFJ6wcjso-HlTjwzly7juJ7V-j-sIYSdmYg-55p9lj/exec") && localCfg.gasWebhookUrl && localCfg.gasWebhookUrl.startsWith("http") && !localCfg.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
             activeWebhook = localCfg.gasWebhookUrl;
           }
         } catch (e) {}
@@ -72,28 +66,24 @@
             if (cloudRes.ok) {
               const cloudData = await cloudRes.json();
               if (cloudData.config && cloudData.config.schoolName) {
-                cloudConfig = cloudData.config;
-                if (!cloudConfig.gasWebhookUrl || cloudConfig.gasWebhookUrl.includes("SMPN4MALANG")) {
-                  cloudConfig.gasWebhookUrl = activeWebhook;
+                if (!cloudData.config.gasWebhookUrl || cloudData.config.gasWebhookUrl.includes("SMPN4MALANG")) {
+                  cloudData.config.gasWebhookUrl = activeWebhook;
                 }
-                localStorage.setItem("ETAHFIZ_WHITELABEL_CONFIG_V1", JSON.stringify(cloudConfig));
+                localStorage.setItem("ETAHFIZ_WHITELABEL_CONFIG_V1", JSON.stringify(cloudData.config));
               }
               if (Array.isArray(cloudData.records) && cloudData.records.length > 0) {
-                cloudRecords = cloudData.records;
-                localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(cloudRecords));
+                localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(cloudData.records));
               }
             }
           } catch (cloudErr) {
-            console.warn("Gagal mengambil data cloud, beralih ke memori lokal:", cloudErr);
+            console.warn("Mode Offline / Lokal aktif:", cloudErr);
           }
         }
 
-        // 2. Ambil file .TSX asli
         const res = await fetch('./e_tahfiz_tilawah_smpn_4_malang.tsx');
         if (!res.ok) throw new Error('File .tsx tidak ditemukan (Status: ' + res.status + ')');
         let tsxCode = await res.text();
 
-        // Jika MASTER_CLOUD_URL sudah diisi, jadikan sebagai default URL di dalam kode
         if (activeWebhook && activeWebhook.startsWith("http") && activeWebhook !== "TEMPEL_URL_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
           tsxCode = tsxCode.replace(
             "https://script.google.com/macros/s/AKfycbz_SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK/exec",
@@ -101,8 +91,7 @@
           );
         }
 
-        // 3. PATCH SINKRONISASI OTOMATIS SAAT KLIK "SIMPAN PENGATURAN ADMIN"
-        // (Agar saat Admin klik Simpan di Tab manapun, langsung otomatis dikirim ke Google Spreadsheet!)
+        // 1. PATCH SIMPAN ADMIN KE CLOUD
         const oldSaveAdmin = `  // Simpan semua perubahan ke state utama & localStorage
   const handleSaveAllChanges = () => {
     const activeCount = Object.values(draftConfig.enabledPages).filter(Boolean).length;
@@ -115,7 +104,7 @@
     showToast("Seluruh pengaturan White-Label berhasil diterapkan & disimpan ke localStorage!");
   };`;
 
-        const newSaveAdmin = `  // Simpan semua perubahan ke state utama, localStorage & LANGSUNG KE CLOUD SPREADSHEET
+        const newSaveAdmin = `  // Simpan semua perubahan ke state utama, localStorage & Cloud Spreadsheet
   const handleSaveAllChanges = () => {
     const activeCount = Object.values(draftConfig.enabledPages).filter(Boolean).length;
     if (activeCount === 0) {
@@ -132,7 +121,7 @@
 
         tsxCode = tsxCode.replace(oldSaveAdmin, newSaveAdmin);
 
-        // 4. PATCH PERBAIKAN CARA KIRIM DATA KE GOOGLE APPS SCRIPT AGAR TIDAK GAGAL CORS
+        // 2. PATCH CORS PENGIRIMAN CONFIG
         const oldSyncFunc = `      if (customConfig.gasWebhookUrl && customConfig.gasWebhookUrl.startsWith("http")) {
         fetch(customConfig.gasWebhookUrl, {
           method: "POST",
@@ -161,7 +150,7 @@
 
         tsxCode = tsxCode.replace(oldSyncFunc, newSyncFunc);
 
-        // 5. PATCH PENYIMPANAN REKAMAN, NILAI GURU & FEEDBACK ORTU KE CLOUD SECARA REAL-TIME
+        // 3. PATCH PENGIRIMAN REKAMAN SUPER CEPAT (SINGLE ROW OPERATION - SKALA 1.000 MURID)
         const oldRecordsBlock = `  // State Data Rekaman
   const [records, setRecords] = useState(() => {
     const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
@@ -172,7 +161,7 @@
     }));
   });`;
 
-        const newRecordsBlock = `  // State Data Rekaman (Tersimpan di Cloud Spreadsheet & localStorage)
+        const newRecordsBlock = `  // State Data Rekaman (Skala 1.000 Murid)
   const [records, setRecords] = useState(() => {
     const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
     const tilawahSampleAudio = generateSimulatedMurottalWav(6, 'tilawah');
@@ -183,7 +172,7 @@
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map(rec => ({
             ...rec,
-            audioUrl: (rec.audioUrl && rec.audioUrl.startsWith('data:')) ? rec.audioUrl : (rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio)
+            audioUrl: (rec.audioUrl && (rec.audioUrl.startsWith('data:') || rec.audioUrl.startsWith('http'))) ? rec.audioUrl : (rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio)
           }));
         }
       }
@@ -194,29 +183,29 @@
     }));
   });
 
-  const syncRecordsToCloud = (updatedList) => {
+  const postToCloudFast = (payload, updatedList) => {
     try {
-      localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(updatedList));
-      if (config.gasWebhookUrl && config.gasWebhookUrl.startsWith("http") && !config.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
-        fetch(config.gasWebhookUrl, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({
-            action: "SYNC_ALL_RECORDS",
-            records: updatedList
-          })
-        }).catch(() => {});
-      }
+      const lightList = updatedList.slice(0, 150).map(r => ({
+        ...r,
+        audioUrl: (r.audioUrl && r.audioUrl.startsWith('http')) ? r.audioUrl : null
+      }));
+      localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(lightList));
     } catch (e) {}
+    if (config.gasWebhookUrl && config.gasWebhookUrl.startsWith("http") && !config.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
+      fetch(config.gasWebhookUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }
   };`;
 
         tsxCode = tsxCode.replace(oldRecordsBlock, newRecordsBlock);
 
-        // Hubungkan handleAddRecord, handleTeacherSave, handleParentSave, handleDeleteRecord ke syncRecordsToCloud
         tsxCode = tsxCode.replace(
           "setRecords(prev => [newRecord, ...prev]);",
-          "setRecords(prev => { const next = [newRecord, ...prev]; syncRecordsToCloud(next); return next; });"
+          "setRecords(prev => { const next = [newRecord, ...prev]; postToCloudFast({ action: 'ADD_SINGLE_RECORD', record: newRecord }, next); return next; });"
         );
         tsxCode = tsxCode.replace(
           `  const handleTeacherSave = (recordId, grade, teacherComment, teacherName) => {
@@ -228,8 +217,15 @@
     }));`,
           `  const handleTeacherSave = (recordId, grade, teacherComment, teacherName) => {
     setRecords(prev => {
-      const next = prev.map(rec => rec.id === recordId ? { ...rec, grade, teacherComment, teacherName } : rec);
-      syncRecordsToCloud(next);
+      let targetRec = null;
+      const next = prev.map(rec => {
+        if (rec.id === recordId) {
+          targetRec = { ...rec, grade, teacherComment, teacherName };
+          return targetRec;
+        }
+        return rec;
+      });
+      if (targetRec) postToCloudFast({ action: 'UPDATE_SINGLE_RECORD', record: targetRec }, next);
       return next;
     });`
         );
@@ -243,17 +239,29 @@
     }));`,
           `  const handleParentSave = (recordId, parentComment) => {
     setRecords(prev => {
-      const next = prev.map(rec => rec.id === recordId ? { ...rec, parentComment } : rec);
-      syncRecordsToCloud(next);
+      let targetRec = null;
+      const next = prev.map(rec => {
+        if (rec.id === recordId) {
+          targetRec = { ...rec, parentComment };
+          return targetRec;
+        }
+        return rec;
+      });
+      if (targetRec) postToCloudFast({ action: 'UPDATE_SINGLE_RECORD', record: targetRec }, next);
       return next;
     });`
         );
         tsxCode = tsxCode.replace(
           "setRecords(prev => prev.filter(rec => rec.id !== recordId));",
-          "setRecords(prev => { const next = prev.filter(rec => rec.id !== recordId); syncRecordsToCloud(next); return next; });"
+          "setRecords(prev => { const next = prev.filter(rec => rec.id !== recordId); postToCloudFast({ action: 'DELETE_SINGLE_RECORD', recordId }, next); return next; });"
         );
 
-        // 6. KONVERSI AUDIO REKAMAN KE BASE64 AGAR BISA DISIMPAN DI SPREADSHEET/LOCALSTORAGE
+        // 4. KOMPRESI AUDIO REKAMAN (32 KBPS) AGAR 15 GB MUAT 60.000+ REKAMAN & CEPAT DI-UPLOAD
+        tsxCode = tsxCode.replace(
+          "const mediaRecorder = new MediaRecorder(stream);",
+          "const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''); const mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 32000 }) : new MediaRecorder(stream);"
+        );
+
         const oldBlobStop = `          if (audioChunksRef.current.length > 0) {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const url = URL.createObjectURL(audioBlob);
@@ -270,7 +278,99 @@
           }`;
         tsxCode = tsxCode.replace(oldBlobStop, newBlobStop);
 
-        // 7. TAMBAHKAN SAKLAR "SEMBUNYIKAN BANTUAN PASSWORD" DI DALAM PANEL ADMIN (TAB 1: IDENTITAS)
+        // 5. FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL (COPY-PASTE) DI PANEL ADMIN TAB 4
+        const oldStudentState = `  // State tambah murid baru
+  const [newStudentName, setNewStudentName] = useState("");`;
+        const newStudentState = `  // State tambah murid baru & Bulk Import Excel 1.000 Murid
+  const [newStudentName, setNewStudentName] = useState("");
+  const [bulkExcelText, setBulkExcelText] = useState("");
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  const handleBulkImportStudents = (replaceExisting = false) => {
+    const lines = bulkExcelText.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      showToast("Tempelkan data dari Excel terlebih dahulu!", "error");
+      return;
+    }
+    const startPwd = Number(draftConfig.studentPasswordStart) || 123456;
+    const baseIdx = replaceExisting ? 0 : draftConfig.students.length;
+    const parsedStudents = lines.map((line, idx) => {
+      // Mendukung pemisah Tab (Copy-Paste langsung dari Excel), titik koma (;), atau koma (,)
+      const parts = line.includes("\\t") ? line.split("\\t") : (line.includes(";") ? line.split(";") : line.split(","));
+      const name = (parts[0] || "").trim().replace(/^["']|["']$/g, "");
+      const kelas = (parts[1] || "VII-A").trim().replace(/^["']|["']$/g, "");
+      const customPwd = (parts[2] || "").trim().replace(/^["']|["']$/g, "");
+      const num = baseIdx + idx + 1;
+      return {
+        id: \`STD-\${String(num).padStart(3, '0')}-\${Math.random().toString(36).slice(2, 5)}\`,
+        name: name || \`Murid \${num}\`,
+        kelas: kelas || "VII-A",
+        password: customPwd || String(startPwd + num - 1)
+      };
+    });
+    setDraftConfig(prev => ({
+      ...prev,
+      students: replaceExisting ? parsedStudents : [...prev.students, ...parsedStudents]
+    }));
+    setBulkExcelText("");
+    setShowBulkModal(false);
+    showToast(\`Berhasil mengimpor \${parsedStudents.length} murid sekaligus! Jangan lupa klik Simpan Pengaturan Admin.\`);
+  };`;
+        tsxCode = tsxCode.replace(oldStudentState, newStudentState);
+
+        const targetRangeBox = `                  {/* Form Tambah Murid Baru */}`;
+        const injectedBulkImporter = `                  {/* FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL / DAPODIK (SELESAI 5 DETIK) */}
+                  <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold text-amber-950">⚡ Import Massal Ratusan / 1.000 Murid dari Microsoft Excel (Selesai 10 Detik)</div>
+                        <div className="text-[11px] text-amber-800">
+                          Salin (Copy) kolom <strong>Nama Murid</strong>, <strong>Kelas</strong>, dan <strong>Password/NISN (Opsional)</strong> langsung dari Excel, lalu tempelkan di sini.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowBulkModal(!showBulkModal)}
+                        className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold cursor-pointer shadow-xs"
+                      >
+                        {showBulkModal ? "Tutup Kotak Import Excel" : "📋 Buka Import Excel Massal"}
+                      </button>
+                    </div>
+
+                    {showBulkModal && (
+                      <div className="space-y-2.5 pt-2 border-t border-amber-200">
+                        <textarea
+                          rows={6}
+                          value={bulkExcelText}
+                          onChange={(e) => setBulkExcelText(e.target.value)}
+                          placeholder={"Contoh hasil Copy-Paste dari Excel (atau pisahkan dengan koma):\\nAhmad Fauzan\\tVII-A\\t123456\\nAisyah Putri\\tVII-A\\t123457\\nBima Arya\\tVIII-B\\t123458"}
+                          className="w-full rounded-xl border border-amber-300 p-3 text-xs font-mono bg-white text-slate-800"
+                        />
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleBulkImportStudents(false)}
+                            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold cursor-pointer"
+                          >
+                            + Tambahkan ke Daftar Saat Ini
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBulkImportStudents(true)}
+                            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
+                          >
+                            🔄 Ganti Seluruh Daftar Murid Lama dengan Ini
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Form Tambah Murid Baru */}`;
+
+        tsxCode = tsxCode.replace(targetRangeBox, injectedBulkImporter);
+
+        // 6. SAKLAR SEMBUNYIKAN BANTUAN PASSWORD DI TAB 1 ADMIN
         const targetAdminPinInput = `                      <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">PIN Halaman Database:</label>
                         <input
@@ -283,7 +383,6 @@
                     </div>`;
 
         const injectedToggleSwitch = targetAdminPinInput + `
-                    {/* SAKLAR SEMBUNYIKAN BOCORAN PASSWORD (MODE RESMI vs MODE DEMO) */}
                     <div className="mt-4 p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/80 flex items-center justify-between gap-4">
                       <div>
                         <div className="text-xs font-extrabold text-amber-950">🔒 Sembunyikan Bantuan & Tombol "Isi Password Otomatis" (Mode Sekolah Resmi)</div>
@@ -304,7 +403,6 @@
 
         tsxCode = tsxCode.replace(targetAdminPinInput, injectedToggleSwitch);
 
-        // Tandai semua tombol bantuan password dengan class 'demo-pwd-btn'
         tsxCode = tsxCode.replaceAll(
           'className="text-[11px] font-bold hover:underline cursor-pointer"',
           'className="text-[11px] font-bold hover:underline cursor-pointer demo-pwd-btn"'
@@ -318,7 +416,6 @@
           'onClick={onOpenPasswordList}\n            style={{ color: \'var(--primary-color)\' }}\n            className="demo-pwd-btn text-xs font-bold hover:underline cursor-pointer"'
         );
 
-        // Terapkan status sembunyi password saat pertama kali dimuat
         try {
           const savedCfg = JSON.parse(localStorage.getItem("ETAHFIZ_WHITELABEL_CONFIG_V1") || "{}");
           if (savedCfg.hidePasswordHints) {
@@ -326,7 +423,6 @@
           }
         } catch (e) {}
 
-        // 8. Jalankan Aplikasi React
         const modifiedCode = tsxCode.replace('export default function App()', 'function App()') +
           '\nimport { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root")).render(<App />);';
 
