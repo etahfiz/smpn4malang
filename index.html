@@ -10,6 +10,11 @@
   <meta name="keywords" content="E-Tahfiz Sekolah, Tilawah Mujawwad, Setoran Hafalan Online, Aplikasi Tahfiz Sekolah, SMP Negeri 4 Malang" />
   <meta name="robots" content="index, follow" />
 
+  <!-- Preconnect agar unduhan modul React & Font jauh lebih cepat -->
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preload" href="./e_tahfiz_tilawah_smpn_4_malang.tsx" as="fetch" crossorigin>
+
   <!-- Tailwind CSS & Google Font Inter -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -39,8 +44,8 @@
   <div id="root">
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,#065f46,#115e59);color:#ffffff;font-family:'Inter',sans-serif;text-align:center;padding:20px;">
       <div style="width:56px;height:56px;border-radius:16px;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px;box-shadow:0 10px 25px rgba(0,0,0,0.2);">🕌</div>
-      <div style="font-size:20px;font-weight:800;margin-bottom:6px;">Memuat Database Cloud E-Tahfiz...</div>
-      <div style="font-size:13px;color:#d1fae5;max-width:360px;">Menyinkronkan data murid, guru, dan rekaman terbaru dari server sekolah...</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:6px;">Membuka Portal E-Tahfiz...</div>
+      <div style="font-size:13px;color:#d1fae5;max-width:360px;">Menyiapkan halaman instan untuk Anda...</div>
     </div>
   </div>
 
@@ -50,7 +55,6 @@
     // =========================================================================
     const MASTER_CLOUD_URL = "https://script.google.com/macros/s/AKfycbyfr3PuxU9uYMLJpk1wA8vX00BFJ6wcjso-HlTjwzly7juJ7V-j-sIYSdmYg-55p9lj/exec";
 
-    // Fungsi pembersih URL Google Drive & ekstraktor File ID
     function cleanDriveLink(rawUrl, driveUrl, driveFileId) {
       let s = String(rawUrl || "").trim();
       s = s.replace(/\[https?:\/\/[^\]]+\]\((https?:\/\/[^\)]+)\)/g, "$1").replace(/^\[|\]$/g, "");
@@ -64,13 +68,23 @@
       return s;
     }
 
-    // Cache audio di memori browser agar tidak perlu download ulang saat diputar ke-2 kalinya
+    // Cache audio di memori browser + Antrean Prioritas (Maks 2 download bersamaan)
     const driveAudioCache = new Map();
 
     function setupDriveAudioAutoLoader(gasWebhookUrl) {
       if (!gasWebhookUrl || !gasWebhookUrl.startsWith("http")) return;
 
-      async function resolveAudioElement(audioEl) {
+      let activeDownloads = 0;
+      const queue = [];
+
+      function processQueue() {
+        while (activeDownloads < 2 && queue.length > 0) {
+          const nextAudioEl = queue.shift();
+          runResolve(nextAudioEl);
+        }
+      }
+
+      async function runResolve(audioEl) {
         if (!audioEl || audioEl.dataset.driveResolved === "true" || audioEl.dataset.driveLoading === "true") return;
         const src = audioEl.getAttribute("src") || audioEl.src || "";
         const match = src.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{25,})/);
@@ -84,6 +98,7 @@
         }
 
         audioEl.dataset.driveLoading = "true";
+        activeDownloads++;
         try {
           const res = await fetch(gasWebhookUrl + "?action=getAudio&id=" + encodeURIComponent(fileId));
           const data = await res.json();
@@ -99,15 +114,32 @@
           console.warn("Gagal memuat audio dari Drive:", err);
         } finally {
           audioEl.dataset.driveLoading = "false";
+          activeDownloads--;
+          processQueue();
         }
       }
 
-      // Pantau seluruh elemen <audio> yang muncul di layar secara otomatis
+      function enqueueAudio(el, priority = false) {
+        if (!el || el.dataset.driveResolved === "true" || el.dataset.driveLoading === "true") return;
+        if (!queue.includes(el)) {
+          if (priority) queue.unshift(el);
+          else queue.push(el);
+        }
+        processQueue();
+      }
+
       const scanAllAudios = () => {
         document.querySelectorAll("audio").forEach(el => {
           const src = el.getAttribute("src") || el.src || "";
           if (src.includes("drive.google.com") || src.includes("docs.google.com")) {
-            resolveAudioElement(el);
+            if (!el.dataset.listenerAttached) {
+              el.dataset.listenerAttached = "true";
+              const parentBox = el.parentElement || el;
+              parentBox.addEventListener("mouseenter", () => enqueueAudio(el, true), { once: true });
+              parentBox.addEventListener("touchstart", () => enqueueAudio(el, true), { once: true, passive: true });
+              el.addEventListener("play", () => enqueueAudio(el, true));
+            }
+            enqueueAudio(el, false);
           }
         });
       };
@@ -115,6 +147,43 @@
       const observer = new MutationObserver(() => scanAllAudios());
       observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
       setInterval(scanAllAudios, 1500);
+    }
+
+    // Sinkronisasi Cloud di Latar Belakang (TANPA MENahan Loading Halaman!)
+    async function syncCloudInBackground(activeWebhook) {
+      if (!activeWebhook || !activeWebhook.startsWith("http") || activeWebhook.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) return;
+      try {
+        const cloudRes = await fetch(activeWebhook + "?t=" + Date.now());
+        if (!cloudRes.ok) return;
+        const cloudData = await cloudRes.json();
+
+        let hasUpdates = false;
+        if (cloudData.config && cloudData.config.schoolName) {
+          if (!cloudData.config.gasWebhookUrl || cloudData.config.gasWebhookUrl.includes("SMPN4MALANG")) {
+            cloudData.config.gasWebhookUrl = activeWebhook;
+          }
+          localStorage.setItem("ETAHFIZ_WHITELABEL_CONFIG_V1", JSON.stringify(cloudData.config));
+          if (typeof document !== 'undefined') {
+            document.body.classList.toggle('hide-password-hints', Boolean(cloudData.config.hidePasswordHints));
+          }
+          hasUpdates = true;
+        }
+        if (Array.isArray(cloudData.records)) {
+          const sanitizedRecords = cloudData.records.map(r => ({
+            ...r,
+            audioUrl: cleanDriveLink(r.audioUrl, r.driveUrl, r.driveFileId)
+          }));
+          localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(sanitizedRecords));
+          hasUpdates = true;
+        }
+
+        // Kirim sinyal ke komponen React yang sedang tampil agar langsung meng-update isi tabel/rekaman!
+        if (hasUpdates) {
+          window.dispatchEvent(new CustomEvent("etahfiz-cloud-synced", { detail: cloudData }));
+        }
+      } catch (cloudErr) {
+        console.warn("Sinkronisasi latar belakang ditunda (Offline/Lokal):", cloudErr);
+      }
     }
 
     async function bootRealtimeApp() {
@@ -125,48 +194,33 @@
           if ((!activeWebhook || activeWebhook === MASTER_CLOUD_URL) && localCfg.gasWebhookUrl && localCfg.gasWebhookUrl.startsWith("http") && !localCfg.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
             activeWebhook = localCfg.gasWebhookUrl;
           }
+          if (localCfg.hidePasswordHints) {
+            document.body.classList.add('hide-password-hints');
+          }
         } catch (e) {}
 
-        // Aktifkan jembatan pemutar audio Google Drive
+        // 1. Jalankan pemutar audio Drive & ambil data Cloud di latar belakang (TIDAK pakai await agar tidak menghambat loading!)
         setupDriveAudioAutoLoader(activeWebhook);
+        syncCloudInBackground(activeWebhook);
 
-        if (activeWebhook && activeWebhook.startsWith("http") && activeWebhook !== "TEMPEL_URL_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI" && !activeWebhook.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
-          try {
-            const cloudRes = await fetch(activeWebhook + "?t=" + Date.now());
-            if (cloudRes.ok) {
-              const cloudData = await cloudRes.json();
-              if (cloudData.config && cloudData.config.schoolName) {
-                if (!cloudData.config.gasWebhookUrl || cloudData.config.gasWebhookUrl.includes("SMPN4MALANG")) {
-                  cloudData.config.gasWebhookUrl = activeWebhook;
-                }
-                localStorage.setItem("ETAHFIZ_WHITELABEL_CONFIG_V1", JSON.stringify(cloudData.config));
-              }
-              if (Array.isArray(cloudData.records) && cloudData.records.length > 0) {
-                const sanitizedRecords = cloudData.records.map(r => ({
-                  ...r,
-                  audioUrl: cleanDriveLink(r.audioUrl, r.driveUrl, r.driveFileId)
-                }));
-                localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(sanitizedRecords));
-              }
-            }
-          } catch (cloudErr) {
-            console.warn("Mode Offline / Lokal aktif:", cloudErr);
+        // 2. Cek apakah hasil kompilasi Babel sudah ada di sessionStorage (membuat refresh halaman instan 0.2 detik)
+        const CACHE_KEY = "ETAHFIZ_COMPILED_JS_V3";
+        let compiledCode = sessionStorage.getItem(CACHE_KEY);
+
+        if (!compiledCode) {
+          const res = await fetch('./e_tahfiz_tilawah_smpn_4_malang.tsx');
+          if (!res.ok) throw new Error('File .tsx tidak ditemukan (Status: ' + res.status + ')');
+          let tsxCode = await res.text();
+
+          if (activeWebhook && activeWebhook.startsWith("http") && activeWebhook !== "TEMPEL_URL_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
+            tsxCode = tsxCode.replace(
+              "https://script.google.com/macros/s/AKfycbz_SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK/exec",
+              activeWebhook
+            );
           }
-        }
 
-        const res = await fetch('./e_tahfiz_tilawah_smpn_4_malang.tsx');
-        if (!res.ok) throw new Error('File .tsx tidak ditemukan (Status: ' + res.status + ')');
-        let tsxCode = await res.text();
-
-        if (activeWebhook && activeWebhook.startsWith("http") && activeWebhook !== "TEMPEL_URL_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI") {
-          tsxCode = tsxCode.replace(
-            "https://script.google.com/macros/s/AKfycbz_SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK/exec",
-            activeWebhook
-          );
-        }
-
-        // 1. PATCH SIMPAN ADMIN KE CLOUD
-        const oldSaveAdmin = `  // Simpan semua perubahan ke state utama & localStorage
+          // PATCH 1: SIMPAN ADMIN KE CLOUD
+          const oldSaveAdmin = `  // Simpan semua perubahan ke state utama & localStorage
   const handleSaveAllChanges = () => {
     const activeCount = Object.values(draftConfig.enabledPages).filter(Boolean).length;
     if (activeCount === 0) {
@@ -178,7 +232,7 @@
     showToast("Seluruh pengaturan White-Label berhasil diterapkan & disimpan ke localStorage!");
   };`;
 
-        const newSaveAdmin = `  // Simpan semua perubahan ke state utama, localStorage & Cloud Spreadsheet
+          const newSaveAdmin = `  // Simpan semua perubahan ke state utama, localStorage & Cloud Spreadsheet
   const handleSaveAllChanges = () => {
     const activeCount = Object.values(draftConfig.enabledPages).filter(Boolean).length;
     if (activeCount === 0) {
@@ -193,10 +247,10 @@
     onSyncSpreadsheet(draftConfig);
   };`;
 
-        tsxCode = tsxCode.replace(oldSaveAdmin, newSaveAdmin);
+          tsxCode = tsxCode.replace(oldSaveAdmin, newSaveAdmin);
 
-        // 2. PATCH CORS PENGIRIMAN CONFIG
-        const oldSyncFunc = `      if (customConfig.gasWebhookUrl && customConfig.gasWebhookUrl.startsWith("http")) {
+          // PATCH 2: CORS PENGIRIMAN CONFIG
+          const oldSyncFunc = `      if (customConfig.gasWebhookUrl && customConfig.gasWebhookUrl.startsWith("http")) {
         fetch(customConfig.gasWebhookUrl, {
           method: "POST",
           mode: "no-cors",
@@ -209,7 +263,7 @@
         }).catch(() => {});
       }`;
 
-        const newSyncFunc = `      if (customConfig.gasWebhookUrl && customConfig.gasWebhookUrl.startsWith("http") && !customConfig.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
+          const newSyncFunc = `      if (customConfig.gasWebhookUrl && customConfig.gasWebhookUrl.startsWith("http") && !customConfig.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
         fetch(customConfig.gasWebhookUrl, {
           method: "POST",
           mode: "no-cors",
@@ -222,10 +276,10 @@
         }).catch(() => {});
       }`;
 
-        tsxCode = tsxCode.replace(oldSyncFunc, newSyncFunc);
+          tsxCode = tsxCode.replace(oldSyncFunc, newSyncFunc);
 
-        // 3. PATCH PENGIRIMAN REKAMAN SUPER CEPAT & PEMBERSIH URL DRIVE
-        const oldRecordsBlock = `  // State Data Rekaman
+          // PATCH 3: STATE DATA REKAMAN + AUTO-UPDATE SAAT BACKGROUND SYNC SELESAI
+          const oldRecordsBlock = `  // State Data Rekaman
   const [records, setRecords] = useState(() => {
     const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
     const tilawahSampleAudio = generateSimulatedMurottalWav(6, 'tilawah');
@@ -235,34 +289,49 @@
     }));
   });`;
 
-        const newRecordsBlock = `  // State Data Rekaman (Skala 1.000 Murid + Auto Clean Link Drive)
-  const [records, setRecords] = useState(() => {
+          const newRecordsBlock = `  // State Data Rekaman (Instant Load + Background Cloud Listener)
+  const formatRecordList = (rawList) => {
     const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
     const tilawahSampleAudio = generateSimulatedMurottalWav(6, 'tilawah');
+    return rawList.map(rec => {
+      let cleanUrl = String(rec.audioUrl || "").replace(/\\[https?:\\/\\/[^\\]]+\\]\\((https?:\\/\\/[^\\)]+)\\)/g, "$1").replace(/^\\[|\\]$/g, "");
+      const idMatch = (cleanUrl + " " + String(rec.driveUrl || "") + " " + String(rec.driveFileId || "")).match(/(?:id=|\\/d\\/|\\b)([a-zA-Z0-9_-]{25,})/);
+      if (!cleanUrl.startsWith("data:") && idMatch && idMatch[1]) {
+        cleanUrl = "https://drive.google.com/uc?export=download&id=" + idMatch[1];
+      }
+      return {
+        ...rec,
+        audioUrl: (cleanUrl && (cleanUrl.startsWith('data:') || cleanUrl.startsWith('http'))) ? cleanUrl : (rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio)
+      };
+    });
+  };
+
+  const [records, setRecords] = useState(() => {
     try {
       const savedRecs = localStorage.getItem("ETAHFIZ_COMMERCIAL_RECORDS_V1");
       if (savedRecs) {
         const parsed = JSON.parse(savedRecs);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(rec => {
-            let cleanUrl = String(rec.audioUrl || "").replace(/\\[https?:\\/\\/[^\\]]+\\]\\((https?:\\/\\/[^\\)]+)\\)/g, "$1").replace(/^\\[|\\]$/g, "");
-            const idMatch = (cleanUrl + " " + String(rec.driveUrl || "") + " " + String(rec.driveFileId || "")).match(/(?:id=|\\/d\\/|\\b)([a-zA-Z0-9_-]{25,})/);
-            if (!cleanUrl.startsWith("data:") && idMatch && idMatch[1]) {
-              cleanUrl = "https://drive.google.com/uc?export=download&id=" + idMatch[1];
-            }
-            return {
-              ...rec,
-              audioUrl: (cleanUrl && (cleanUrl.startsWith('data:') || cleanUrl.startsWith('http'))) ? cleanUrl : (rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio)
-            };
-          });
+          return formatRecordList(parsed);
         }
       }
     } catch (e) {}
-    return INITIAL_RECORDS.map(rec => ({
-      ...rec,
-      audioUrl: rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio
-    }));
+    return formatRecordList(INITIAL_RECORDS);
   });
+
+  useEffect(() => {
+    const handleCloudUpdate = (e) => {
+      const cloudData = e.detail || {};
+      if (cloudData.config && cloudData.config.schoolName) {
+        setConfig(cloudData.config);
+      }
+      if (Array.isArray(cloudData.records) && cloudData.records.length > 0) {
+        setRecords(formatRecordList(cloudData.records));
+      }
+    };
+    window.addEventListener("etahfiz-cloud-synced", handleCloudUpdate);
+    return () => window.removeEventListener("etahfiz-cloud-synced", handleCloudUpdate);
+  }, []);
 
   const postToCloudFast = (payload, updatedList) => {
     try {
@@ -282,21 +351,21 @@
     }
   };`;
 
-        tsxCode = tsxCode.replace(oldRecordsBlock, newRecordsBlock);
+          tsxCode = tsxCode.replace(oldRecordsBlock, newRecordsBlock);
 
-        tsxCode = tsxCode.replace(
-          "setRecords(prev => [newRecord, ...prev]);",
-          "setRecords(prev => { const next = [newRecord, ...prev]; postToCloudFast({ action: 'ADD_SINGLE_RECORD', record: newRecord }, next); return next; });"
-        );
-        tsxCode = tsxCode.replace(
-          `  const handleTeacherSave = (recordId, grade, teacherComment, teacherName) => {
+          tsxCode = tsxCode.replace(
+            "setRecords(prev => [newRecord, ...prev]);",
+            "setRecords(prev => { const next = [newRecord, ...prev]; postToCloudFast({ action: 'ADD_SINGLE_RECORD', record: newRecord }, next); return next; });"
+          );
+          tsxCode = tsxCode.replace(
+            `  const handleTeacherSave = (recordId, grade, teacherComment, teacherName) => {
     setRecords(prev => prev.map(rec => {
       if (rec.id === recordId) {
         return { ...rec, grade, teacherComment, teacherName };
       }
       return rec;
     }));`,
-          `  const handleTeacherSave = (recordId, grade, teacherComment, teacherName) => {
+            `  const handleTeacherSave = (recordId, grade, teacherComment, teacherName) => {
     setRecords(prev => {
       let targetRec = null;
       const next = prev.map(rec => {
@@ -309,16 +378,16 @@
       if (targetRec) postToCloudFast({ action: 'UPDATE_SINGLE_RECORD', record: targetRec }, next);
       return next;
     });`
-        );
-        tsxCode = tsxCode.replace(
-          `  const handleParentSave = (recordId, parentComment) => {
+          );
+          tsxCode = tsxCode.replace(
+            `  const handleParentSave = (recordId, parentComment) => {
     setRecords(prev => prev.map(rec => {
       if (rec.id === recordId) {
         return { ...rec, parentComment };
       }
       return rec;
     }));`,
-          `  const handleParentSave = (recordId, parentComment) => {
+            `  const handleParentSave = (recordId, parentComment) => {
     setRecords(prev => {
       let targetRec = null;
       const next = prev.map(rec => {
@@ -331,24 +400,24 @@
       if (targetRec) postToCloudFast({ action: 'UPDATE_SINGLE_RECORD', record: targetRec }, next);
       return next;
     });`
-        );
-        tsxCode = tsxCode.replace(
-          "setRecords(prev => prev.filter(rec => rec.id !== recordId));",
-          "setRecords(prev => { const next = prev.filter(rec => rec.id !== recordId); postToCloudFast({ action: 'DELETE_SINGLE_RECORD', recordId }, next); return next; });"
-        );
+          );
+          tsxCode = tsxCode.replace(
+            "setRecords(prev => prev.filter(rec => rec.id !== recordId));",
+            "setRecords(prev => { const next = prev.filter(rec => rec.id !== recordId); postToCloudFast({ action: 'DELETE_SINGLE_RECORD', recordId }, next); return next; });"
+          );
 
-        // 4. KOMPRESI AUDIO REKAMAN (32 KBPS)
-        tsxCode = tsxCode.replace(
-          "const mediaRecorder = new MediaRecorder(stream);",
-          "const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''); const mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 32000 }) : new MediaRecorder(stream);"
-        );
+          // PATCH 4: KOMPRESI AUDIO REKAMAN (32 KBPS)
+          tsxCode = tsxCode.replace(
+            "const mediaRecorder = new MediaRecorder(stream);",
+            "const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''); const mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 32000 }) : new MediaRecorder(stream);"
+          );
 
-        const oldBlobStop = `          if (audioChunksRef.current.length > 0) {
+          const oldBlobStop = `          if (audioChunksRef.current.length > 0) {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const url = URL.createObjectURL(audioBlob);
             setRecordedAudioUrl(url);
           }`;
-        const newBlobStop = `          if (audioChunksRef.current.length > 0) {
+          const newBlobStop = `          if (audioChunksRef.current.length > 0) {
             const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
             const reader = new FileReader();
@@ -357,12 +426,12 @@
             };
             reader.readAsDataURL(audioBlob);
           }`;
-        tsxCode = tsxCode.replace(oldBlobStop, newBlobStop);
+          tsxCode = tsxCode.replace(oldBlobStop, newBlobStop);
 
-        // 5. FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL
-        const oldStudentState = `  // State tambah murid baru
+          // PATCH 5: FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL
+          const oldStudentState = `  // State tambah murid baru
   const [newStudentName, setNewStudentName] = useState("");`;
-        const newStudentState = `  // State tambah murid baru & Bulk Import Excel 1.000 Murid
+          const newStudentState = `  // State tambah murid baru & Bulk Import Excel 1.000 Murid
   const [newStudentName, setNewStudentName] = useState("");
   const [bulkExcelText, setBulkExcelText] = useState("");
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -396,10 +465,10 @@
     setShowBulkModal(false);
     showToast(\`Berhasil mengimpor \${parsedStudents.length} murid sekaligus! Jangan lupa klik Simpan Pengaturan Admin.\`);
   };`;
-        tsxCode = tsxCode.replace(oldStudentState, newStudentState);
+          tsxCode = tsxCode.replace(oldStudentState, newStudentState);
 
-        const targetRangeBox = `                  {/* Form Tambah Murid Baru */}`;
-        const injectedBulkImporter = `                  {/* FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL / DAPODIK */}
+          const targetRangeBox = `                  {/* Form Tambah Murid Baru */}`;
+          const injectedBulkImporter = `                  {/* FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL / DAPODIK */}
                   <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -448,10 +517,10 @@
 
                   {/* Form Tambah Murid Baru */}`;
 
-        tsxCode = tsxCode.replace(targetRangeBox, injectedBulkImporter);
+          tsxCode = tsxCode.replace(targetRangeBox, injectedBulkImporter);
 
-        // 6. SAKLAR SEMBUNYIKAN BANTUAN PASSWORD DI TAB 1 ADMIN
-        const targetAdminPinInput = `                      <div>
+          // PATCH 6: SAKLAR SEMBUNYIKAN BANTUAN PASSWORD DI TAB 1 ADMIN
+          const targetAdminPinInput = `                      <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">PIN Halaman Database:</label>
                         <input
                           type="text"
@@ -462,7 +531,7 @@
                       </div>
                     </div>`;
 
-        const injectedToggleSwitch = targetAdminPinInput + `
+          const injectedToggleSwitch = targetAdminPinInput + `
                     <div className="mt-4 p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/80 flex items-center justify-between gap-4">
                       <div>
                         <div className="text-xs font-extrabold text-amber-950">🔒 Sembunyikan Bantuan & Tombol "Isi Password Otomatis" (Mode Sekolah Resmi)</div>
@@ -481,41 +550,39 @@
                       </button>
                     </div>`;
 
-        tsxCode = tsxCode.replace(targetAdminPinInput, injectedToggleSwitch);
+          tsxCode = tsxCode.replace(targetAdminPinInput, injectedToggleSwitch);
 
-        tsxCode = tsxCode.replaceAll(
-          'className="text-[11px] font-bold hover:underline cursor-pointer"',
-          'className="text-[11px] font-bold hover:underline cursor-pointer demo-pwd-btn"'
-        );
-        tsxCode = tsxCode.replace(
-          'onClick={() => setShowPasswordModal(true)}\n                className="flex items-center gap-1.5 px-3 py-2',
-          'onClick={() => setShowPasswordModal(true)}\n                className="demo-pwd-btn flex items-center gap-1.5 px-3 py-2'
-        );
-        tsxCode = tsxCode.replace(
-          'onClick={onOpenPasswordList}\n            style={{ color: \'var(--primary-color)\' }}\n            className="text-xs font-bold hover:underline cursor-pointer"',
-          'onClick={onOpenPasswordList}\n            style={{ color: \'var(--primary-color)\' }}\n            className="demo-pwd-btn text-xs font-bold hover:underline cursor-pointer"'
-        );
+          tsxCode = tsxCode.replaceAll(
+            'className="text-[11px] font-bold hover:underline cursor-pointer"',
+            'className="text-[11px] font-bold hover:underline cursor-pointer demo-pwd-btn"'
+          );
+          tsxCode = tsxCode.replace(
+            'onClick={() => setShowPasswordModal(true)}\n                className="flex items-center gap-1.5 px-3 py-2',
+            'onClick={() => setShowPasswordModal(true)}\n                className="demo-pwd-btn flex items-center gap-1.5 px-3 py-2'
+          );
+          tsxCode = tsxCode.replace(
+            'onClick={onOpenPasswordList}\n            style={{ color: \'var(--primary-color)\' }}\n            className="text-xs font-bold hover:underline cursor-pointer"',
+            'onClick={onOpenPasswordList}\n            style={{ color: \'var(--primary-color)\' }}\n            className="demo-pwd-btn text-xs font-bold hover:underline cursor-pointer"'
+          );
 
-        try {
-          const savedCfg = JSON.parse(localStorage.getItem("ETAHFIZ_WHITELABEL_CONFIG_V1") || "{}");
-          if (savedCfg.hidePasswordHints) {
-            document.body.classList.add('hide-password-hints');
-          }
-        } catch (e) {}
+          const modifiedCode = tsxCode.replace('export default function App()', 'function App()') +
+            '\nimport { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root")).render(<App />);';
 
-        const modifiedCode = tsxCode.replace('export default function App()', 'function App()') +
-          '\nimport { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root")).render(<App />);';
+          compiledCode = Babel.transform(modifiedCode, {
+            presets: [
+              ['react', { runtime: 'classic' }],
+              'typescript'
+            ],
+            sourceType: 'module',
+            filename: 'app.tsx'
+          }).code;
 
-        const compiled = Babel.transform(modifiedCode, {
-          presets: [
-            ['react', { runtime: 'classic' }],
-            'typescript'
-          ],
-          sourceType: 'module',
-          filename: 'app.tsx'
-        }).code;
+          try {
+            sessionStorage.setItem(CACHE_KEY, compiledCode);
+          } catch (e) {}
+        }
 
-        const blob = new Blob([compiled], { type: 'text/javascript' });
+        const blob = new Blob([compiledCode], { type: 'text/javascript' });
         const moduleUrl = URL.createObjectURL(blob);
         await import(moduleUrl);
 
