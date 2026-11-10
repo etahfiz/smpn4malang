@@ -50,15 +50,85 @@
     // =========================================================================
     const MASTER_CLOUD_URL = "https://script.google.com/macros/s/AKfycbyfr3PuxU9uYMLJpk1wA8vX00BFJ6wcjso-HlTjwzly7juJ7V-j-sIYSdmYg-55p9lj/exec";
 
+    // Fungsi pembersih URL Google Drive & ekstraktor File ID
+    function cleanDriveLink(rawUrl, driveUrl, driveFileId) {
+      let s = String(rawUrl || "").trim();
+      s = s.replace(/\[https?:\/\/[^\]]+\]\((https?:\/\/[^\)]+)\)/g, "$1").replace(/^\[|\]$/g, "");
+      if (s.startsWith("data:")) return s;
+
+      const combined = s + " " + String(driveUrl || "") + " " + String(driveFileId || "");
+      const m = combined.match(/(?:id=|\/d\/|^|\s)([a-zA-Z0-9_-]{25,})/);
+      if (m && m[1]) {
+        return "https://drive.google.com/uc?export=download&id=" + m[1];
+      }
+      return s;
+    }
+
+    // Cache audio di memori browser agar tidak perlu download ulang saat diputar ke-2 kalinya
+    const driveAudioCache = new Map();
+
+    function setupDriveAudioAutoLoader(gasWebhookUrl) {
+      if (!gasWebhookUrl || !gasWebhookUrl.startsWith("http")) return;
+
+      async function resolveAudioElement(audioEl) {
+        if (!audioEl || audioEl.dataset.driveResolved === "true" || audioEl.dataset.driveLoading === "true") return;
+        const src = audioEl.getAttribute("src") || audioEl.src || "";
+        const match = src.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{25,})/);
+        if (!match || !match[1]) return;
+
+        const fileId = match[1];
+        if (driveAudioCache.has(fileId)) {
+          audioEl.dataset.driveResolved = "true";
+          audioEl.src = driveAudioCache.get(fileId);
+          return;
+        }
+
+        audioEl.dataset.driveLoading = "true";
+        try {
+          const res = await fetch(gasWebhookUrl + "?action=getAudio&id=" + encodeURIComponent(fileId));
+          const data = await res.json();
+          if (data && data.status === "ok" && data.dataUrl) {
+            driveAudioCache.set(fileId, data.dataUrl);
+            audioEl.dataset.driveResolved = "true";
+            const wasPlaying = !audioEl.paused;
+            audioEl.src = data.dataUrl;
+            audioEl.load();
+            if (wasPlaying) audioEl.play().catch(() => {});
+          }
+        } catch (err) {
+          console.warn("Gagal memuat audio dari Drive:", err);
+        } finally {
+          audioEl.dataset.driveLoading = "false";
+        }
+      }
+
+      // Pantau seluruh elemen <audio> yang muncul di layar secara otomatis
+      const scanAllAudios = () => {
+        document.querySelectorAll("audio").forEach(el => {
+          const src = el.getAttribute("src") || el.src || "";
+          if (src.includes("drive.google.com") || src.includes("docs.google.com")) {
+            resolveAudioElement(el);
+          }
+        });
+      };
+
+      const observer = new MutationObserver(() => scanAllAudios());
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
+      setInterval(scanAllAudios, 1500);
+    }
+
     async function bootRealtimeApp() {
       try {
         let activeWebhook = MASTER_CLOUD_URL;
         try {
           const localCfg = JSON.parse(localStorage.getItem("ETAHFIZ_WHITELABEL_CONFIG_V1") || "{}");
-          if ((!activeWebhook || activeWebhook === "https://script.google.com/macros/s/AKfycbyfr3PuxU9uYMLJpk1wA8vX00BFJ6wcjso-HlTjwzly7juJ7V-j-sIYSdmYg-55p9lj/exec") && localCfg.gasWebhookUrl && localCfg.gasWebhookUrl.startsWith("http") && !localCfg.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
+          if ((!activeWebhook || activeWebhook === MASTER_CLOUD_URL) && localCfg.gasWebhookUrl && localCfg.gasWebhookUrl.startsWith("http") && !localCfg.gasWebhookUrl.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
             activeWebhook = localCfg.gasWebhookUrl;
           }
         } catch (e) {}
+
+        // Aktifkan jembatan pemutar audio Google Drive
+        setupDriveAudioAutoLoader(activeWebhook);
 
         if (activeWebhook && activeWebhook.startsWith("http") && activeWebhook !== "TEMPEL_URL_GOOGLE_APPS_SCRIPT_ANDA_DI_SINI" && !activeWebhook.includes("SMPN4MALANG_TAHFIZ_TILAWAH_WEBHOOK")) {
           try {
@@ -72,7 +142,11 @@
                 localStorage.setItem("ETAHFIZ_WHITELABEL_CONFIG_V1", JSON.stringify(cloudData.config));
               }
               if (Array.isArray(cloudData.records) && cloudData.records.length > 0) {
-                localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(cloudData.records));
+                const sanitizedRecords = cloudData.records.map(r => ({
+                  ...r,
+                  audioUrl: cleanDriveLink(r.audioUrl, r.driveUrl, r.driveFileId)
+                }));
+                localStorage.setItem("ETAHFIZ_COMMERCIAL_RECORDS_V1", JSON.stringify(sanitizedRecords));
               }
             }
           } catch (cloudErr) {
@@ -150,7 +224,7 @@
 
         tsxCode = tsxCode.replace(oldSyncFunc, newSyncFunc);
 
-        // 3. PATCH PENGIRIMAN REKAMAN SUPER CEPAT (SINGLE ROW OPERATION - SKALA 1.000 MURID)
+        // 3. PATCH PENGIRIMAN REKAMAN SUPER CEPAT & PEMBERSIH URL DRIVE
         const oldRecordsBlock = `  // State Data Rekaman
   const [records, setRecords] = useState(() => {
     const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
@@ -161,7 +235,7 @@
     }));
   });`;
 
-        const newRecordsBlock = `  // State Data Rekaman (Skala 1.000 Murid)
+        const newRecordsBlock = `  // State Data Rekaman (Skala 1.000 Murid + Auto Clean Link Drive)
   const [records, setRecords] = useState(() => {
     const tahfizSampleAudio = generateSimulatedMurottalWav(5, 'tahfiz');
     const tilawahSampleAudio = generateSimulatedMurottalWav(6, 'tilawah');
@@ -170,10 +244,17 @@
       if (savedRecs) {
         const parsed = JSON.parse(savedRecs);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(rec => ({
-            ...rec,
-            audioUrl: (rec.audioUrl && (rec.audioUrl.startsWith('data:') || rec.audioUrl.startsWith('http'))) ? rec.audioUrl : (rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio)
-          }));
+          return parsed.map(rec => {
+            let cleanUrl = String(rec.audioUrl || "").replace(/\\[https?:\\/\\/[^\\]]+\\]\\((https?:\\/\\/[^\\)]+)\\)/g, "$1").replace(/^\\[|\\]$/g, "");
+            const idMatch = (cleanUrl + " " + String(rec.driveUrl || "") + " " + String(rec.driveFileId || "")).match(/(?:id=|\\/d\\/|\\b)([a-zA-Z0-9_-]{25,})/);
+            if (!cleanUrl.startsWith("data:") && idMatch && idMatch[1]) {
+              cleanUrl = "https://drive.google.com/uc?export=download&id=" + idMatch[1];
+            }
+            return {
+              ...rec,
+              audioUrl: (cleanUrl && (cleanUrl.startsWith('data:') || cleanUrl.startsWith('http'))) ? cleanUrl : (rec.category === 'tilawah' ? tilawahSampleAudio : tahfizSampleAudio)
+            };
+          });
         }
       }
     } catch (e) {}
@@ -256,7 +337,7 @@
           "setRecords(prev => { const next = prev.filter(rec => rec.id !== recordId); postToCloudFast({ action: 'DELETE_SINGLE_RECORD', recordId }, next); return next; });"
         );
 
-        // 4. KOMPRESI AUDIO REKAMAN (32 KBPS) AGAR 15 GB MUAT 60.000+ REKAMAN & CEPAT DI-UPLOAD
+        // 4. KOMPRESI AUDIO REKAMAN (32 KBPS)
         tsxCode = tsxCode.replace(
           "const mediaRecorder = new MediaRecorder(stream);",
           "const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''); const mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 32000 }) : new MediaRecorder(stream);"
@@ -278,7 +359,7 @@
           }`;
         tsxCode = tsxCode.replace(oldBlobStop, newBlobStop);
 
-        // 5. FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL (COPY-PASTE) DI PANEL ADMIN TAB 4
+        // 5. FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL
         const oldStudentState = `  // State tambah murid baru
   const [newStudentName, setNewStudentName] = useState("");`;
         const newStudentState = `  // State tambah murid baru & Bulk Import Excel 1.000 Murid
@@ -295,7 +376,6 @@
     const startPwd = Number(draftConfig.studentPasswordStart) || 123456;
     const baseIdx = replaceExisting ? 0 : draftConfig.students.length;
     const parsedStudents = lines.map((line, idx) => {
-      // Mendukung pemisah Tab (Copy-Paste langsung dari Excel), titik koma (;), atau koma (,)
       const parts = line.includes("\\t") ? line.split("\\t") : (line.includes(";") ? line.split(";") : line.split(","));
       const name = (parts[0] || "").trim().replace(/^["']|["']$/g, "");
       const kelas = (parts[1] || "VII-A").trim().replace(/^["']|["']$/g, "");
@@ -319,7 +399,7 @@
         tsxCode = tsxCode.replace(oldStudentState, newStudentState);
 
         const targetRangeBox = `                  {/* Form Tambah Murid Baru */}`;
-        const injectedBulkImporter = `                  {/* FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL / DAPODIK (SELESAI 5 DETIK) */}
+        const injectedBulkImporter = `                  {/* FITUR IMPORT MASSAL 1.000 MURID DARI EXCEL / DAPODIK */}
                   <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -333,7 +413,7 @@
                         onClick={() => setShowBulkModal(!showBulkModal)}
                         className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold cursor-pointer shadow-xs"
                       >
-                        {showBulkModal ? "Tutup Kotak Import Excel" : "📋 Buka Import Excel Massal"}
+                        {showBulkModal ? "Tutup Kotak Import Excel" : "📥 Buka Import Excel Massal"}
                       </button>
                     </div>
 
